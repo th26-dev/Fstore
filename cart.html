@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giỏ hàng - Apple Store</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/header.css">
+    <link rel="stylesheet" href="./assets/css/cart.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="liquid-header menu-open">
+        <nav class="nav-container">
+            <ul class="nav-list">
+                <li class="nav-item"><a href="index.html" class="nav-link"><i class="fa-brands fa-apple" style="font-size: 1.2rem;"></i></a></li>
+                <li class="nav-item"><a href="#" class="nav-link">Giỏ hàng của bạn</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="cart-container">
+        <h1>Thanh toán đơn hàng</h1>
+        <div class="cart-grid">
+            <div class="cart-items" id="cartItems"></div>
+            
+            <div class="checkout-box">
+                <h3>Tổng cộng</h3>
+                <p class="total-price" id="totalPrice">0 đ</p>
+                
+                <div class="payment-methods">
+                    <h4>Chọn phương thức thanh toán:</h4>
+                    <label class="payment-label">
+                        <input type="radio" name="payment" value="momo" checked>
+                        <span>Ví MoMo (Sandbox)</span>
+                    </label>
+                    <label class="payment-label">
+                        <input type="radio" name="payment" value="vnpay">
+                        <span>VNPay (Sandbox)</span>
+                    </label>
+                </div>
+
+                <button class="btn-checkout" id="checkoutBtn">Tiến hành thanh toán</button>
+                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="./controllers/cartController.js"></script>
+</body>
+</html>

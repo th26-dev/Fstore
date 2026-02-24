@@ -1,0 +1,148 @@
+.search-bar-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 44px;
+    background-color: rgba(22, 22, 23, 0.95);
+    display: flex; justify-content: center; align-items: center;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 10000;
+}
+
+.search-bar-container.active {
+    opacity: 1; visibility: visible;
+}
+
+.search-bar-container input {
+    width: 50%; background: transparent; border: none;
+    color: #fff; font-size: 16px; outline: none; padding: 0 15px;
+}
+
+.search-bar-container i {
+    color: #86868b; font-size: 18px; cursor: pointer; transition: 0.3s;
+}
+
+.search-bar-container i:hover { color: #fff; }
+
+.product-section {
+    max-width: 1000px; margin: 0 auto; padding: 0 20px 100px 20px;
+}
+
+#sectionTitle {
+    font-size: 36px; font-weight: 600; margin-bottom: 40px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+.product-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px;
+    padding: 30px 20px; text-align: center; cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-10px);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.product-img {
+    width: 100%; height: 200px; object-fit: contain; margin-bottom: 20px;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+}
+
+.product-name {
+    font-size: 22px; font-weight: 600; margin-bottom: 8px;
+}
+
+.product-price {
+    font-size: 18px; color: #f5f5f7; margin-bottom: 20px;
+}
+
+.btn-view {
+    display: inline-block; background-color: #f5f5f7; color: #1d1d1f;
+    padding: 10px 20px; border-radius: 20px; font-size: 14px;
+    font-weight: 600; transition: 0.3s; pointer-events: none;
+}
+
+.product-card:hover .btn-view {
+    background-color: #0071e3; color: #fff;
+}
+
+.popover-container {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10001; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+}
+
+.popover-container.active {
+    opacity: 1; visibility: visible;
+}
+
+.popover-content {
+    background-color: #ffffff; width: 90%; max-width: 900px;
+    border-radius: 24px; position: relative; padding: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    transform: scale(0.9); transition: transform 0.3s ease;
+}
+
+.popover-container.active .popover-content {
+    transform: scale(1);
+}
+
+.close-popover {
+    position: absolute; top: 20px; right: 25px; font-size: 24px;
+    color: #1d1d1f; cursor: pointer; transition: 0.2s;
+}
+
+.close-popover:hover { color: #0071e3; }
+
+.popover-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+}
+
+.popover-image-col img {
+    width: 100%; height: auto; max-height: 400px; object-fit: contain;
+}
+
+.popover-info-col {
+    display: flex; flex-direction: column; justify-content: center; color: #1d1d1f;
+}
+
+.popover-info-col h2 { font-size: 32px; font-weight: 600; margin-bottom: 10px; }
+.popover-desc { font-size: 16px; color: #86868b; margin-bottom: 20px; }
+.popover-specs { margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+.popover-price { font-size: 28px; font-weight: 600; margin-bottom: 20px; }
+
+.popover-variants { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+
+.variant-btn {
+    padding: 10px 15px; border: 1px solid #d2d2d7; border-radius: 12px;
+    background: #fff; cursor: pointer; font-size: 14px; transition: all 0.2s;
+}
+
+.variant-btn.active, .variant-btn:hover {
+    border-color: #0071e3; color: #0071e3;
+}
+
+.btn-add-cart {
+    background-color: #0071e3; color: #fff; padding: 15px 30px;
+    border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: 0.3s;
+}
+
+.btn-add-cart:hover {
+    background-color: #0077ed; transform: scale(1.02);
+}
+
+@media (max-width: 768px) {
+    .popover-grid { grid-template-columns: 1fr; gap: 20px; }
+    .popover-content { padding: 30px 20px; height: 90vh; overflow-y: auto; }
+}

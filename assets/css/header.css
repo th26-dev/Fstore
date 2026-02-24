@@ -1,0 +1,113 @@
+.liquid-header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    z-index: 9999;
+    transition: background-color 0.3s ease;
+}
+
+.liquid-header.menu-open {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.nav-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    height: 100%;
+}
+
+.nav-list {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    list-style: none;
+    height: 100%;
+    padding: 0 20px;
+}
+
+.nav-link {
+    color: #1d1d1f;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    transition: color 0.3s;
+}
+
+.nav-link:hover {
+    color: #000000;
+}
+
+.dropdown-mega-menu {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    width: 100%;
+    background-color: #ffffff;
+    color: #1d1d1f;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-mega-menu.show {
+    max-height: 400px;
+}
+
+.dropdown-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    display: flex;
+    gap: 50px;
+    opacity: 0;
+    transition: opacity 0.3s 0.1s ease;
+}
+
+.dropdown-mega-menu.show .dropdown-content {
+    opacity: 1;
+}
+
+.sub-category-list {
+    list-style: none;
+}
+
+.sub-category-title {
+    color: #86868b;
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.sub-category-item {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1d1d1f;
+    cursor: pointer;
+}
+
+.sub-category-item:hover {
+    color: #0071e3;
+}
+
+.page-overlay {
+    position: fixed;
+    top: 44px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 44px);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.page-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}

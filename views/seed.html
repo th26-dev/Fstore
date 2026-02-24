@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ Bơm Dữ Liệu - Admin</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; background: #f5f5f7; }
+        button { padding: 15px 30px; font-size: 18px; background: #0071e3; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #0077ed; transform: scale(1.05); }
+        #status { margin-top: 20px; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h1>Công cụ Bơm Dữ Liệu (Seeder)</h1>
+    <p>Bấm nút bên dưới để tự động tạo Database Danh mục Cha/Con và Sản phẩm</p>
+    
+    <button id="btnSeed">🚀 BƠM DỮ LIỆU VÀO FIRESTORE</button>
+    <p id="status"></p>
+
+    <script type="module" src="../controllers/seedController.js"></script>
+</body>
+</html>

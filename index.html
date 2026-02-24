@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Store Clone</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/header.css">
+    <link rel="stylesheet" href="./assets/css/home.css">
+    <link rel="stylesheet" href="./assets/css/product.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="liquid-header">
+        <nav class="nav-container">
+            <ul class="nav-list" id="mainNavList"></ul>
+        </nav>
+
+        <div class="search-bar-container" id="searchBarContainer">
+            <i class="fa-solid fa-magnifying-glass search-icon-input"></i>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm... (Nhấn Enter để tìm)">
+            <i class="fa-solid fa-xmark close-search" id="closeSearchBtn"></i>
+        </div>
+
+        <div class="dropdown-mega-menu" id="megaMenu">
+            <div class="dropdown-content" id="dropdownContent"></div>
+        </div>
+    </header>
+
+    <div id="pageOverlay" class="page-overlay"></div>
+
+    <video autoplay muted loop playsinline class="bg-video-overlay">
+        <source src="./assets/media/Introducing Galaxy S25 Ultra Galaxy AI Samsung.mp4" type="video/mp4">
+    </video>
+
+    <main class="main-content">
+        <div class="product-section">
+            <h2 id="sectionTitle" style="display: none;">Danh sách sản phẩm</h2>
+            <div class="product-grid" id="productGrid"></div>
+        </div>
+    </main>
+
+    <div id="productPopover" class="popover-container">
+        <div class="popover-content">
+            <i class="fa-solid fa-xmark close-popover" id="closePopoverBtn"></i>
+            <div class="popover-grid">
+                <div class="popover-image-col">
+                    <img src="" id="popoverImg" alt="">
+                </div>
+                <div class="popover-info-col">
+                    <h2 id="popoverName"></h2>
+                    <p class="popover-desc" id="popoverDesc"></p>
+                    <div class="popover-specs" id="popoverSpecs"></div>
+                    <h3 class="popover-price" id="popoverPrice"></h3>
+                    <div class="popover-variants" id="popoverVariants"></div>
+                    <button class="btn-add-cart" id="addToCartBtn">Thêm vào giỏ hàng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./controllers/headerController.js"></script>
+    <script type="module" src="./controllers/productController.js"></script>
+</body>
+</html>

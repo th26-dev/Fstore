@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Apple Store</title>
+    <link rel="stylesheet" href="./assets/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-brands fa-apple"></i> Admin
+            </div>
+            <ul class="nav-menu">
+                <li class="active" data-tab="dashboard"><i class="fa-solid fa-chart-line"></i> Thống kê</li>
+                <li data-tab="products"><i class="fa-solid fa-box"></i> Sản phẩm</li>
+                <li data-tab="orders"><i class="fa-solid fa-cart-shopping"></i> Đơn hàng</li>
+                <li data-tab="forum"><i class="fa-solid fa-comments"></i> Diễn đàn</li>
+                <li><a href="index.html" style="color:inherit; text-decoration:none;"><i class="fa-solid fa-house"></i> Về trang chủ</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h2>Bảng điều khiển</h2>
+                <div class="user-info" id="adminEmail">Đang kiểm tra quyền...</div>
+            </header>
+
+            <div id="tab-dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Tổng doanh thu</h3>
+                        <p id="statRevenue">0 đ</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Đơn hàng</h3>
+                        <p id="statOrders">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Sản phẩm</h3>
+                        <p id="statProducts">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-products" class="tab-content">
+                <div class="flex-between">
+                    <h3>Quản lý sản phẩm</h3>
+                    <button class="btn-add">Thêm sản phẩm</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên sản phẩm</th>
+                            <th>Giá (Mặc định)</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminProductList"></tbody>
+                </table>
+            </div>
+
+            <div id="tab-orders" class="tab-content">
+                <h3>Quản lý đơn hàng</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminOrderList"></tbody>
+                </table>
+            </div>
+
+            <div id="tab-forum" class="tab-content">
+                <h3>Trả lời thắc mắc khách hàng</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Khách hàng</th>
+                            <th>Câu hỏi</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminForumList"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="./controllers/adminController.js"></script>
+</body>
+</html>
