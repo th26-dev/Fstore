@@ -1,6 +1,5 @@
 export async function onRequestPost(context) {
     try {
-        // 1. CHỐT CHẶN: Kiểm tra Cloudflare đã nạp biến môi trường chưa
         if (!context.env.MOMO_PARTNER_CODE || !context.env.MOMO_SECRET_KEY) {
             throw new Error("Lỗi Server: Cloudflare chưa nạp được Biến môi trường. Vui lòng kiểm tra lại Settings!");
         }
@@ -9,7 +8,6 @@ export async function onRequestPost(context) {
         const amountNum = Number(body.amount); 
         const amountStr = amountNum.toString(); 
         
-        // 2. TUYỆT CHIÊU: Dùng .trim() để triệt tiêu mọi khoảng trắng thừa
         const partnerCode = context.env.MOMO_PARTNER_CODE.trim();
         const accessKey = context.env.MOMO_ACCESS_KEY.trim();
         const secretKey = context.env.MOMO_SECRET_KEY.trim();
@@ -18,9 +16,9 @@ export async function onRequestPost(context) {
         const url = new URL(context.request.url);
         const domain = url.origin;
 
-        const orderId = "APPLE_" + Date.now();
+        const orderId = "FSTORE_" + Date.now();
         const requestId = orderId;
-        const orderInfo = "Thanh toan don hang Apple Store";
+        const orderInfo = "Thanh toan don hang FStore";
         const redirectUrl = `${domain}/success.html`;
         const ipnUrl = `${domain}/api/webhook`;
         const requestType = "captureWallet";

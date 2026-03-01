@@ -58,14 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     checkoutBtn.addEventListener('click', async () => {
-        // Đảm bảo amount là số nguyên (Integer), không gửi dấu chấm hay chữ "đ" sang MoMo
         const totalAmount = Math.round(cartData.reduce((sum, item) => sum + item.price, 0));
         
         checkoutBtn.innerText = "Đang tạo mã QR MoMo...";
         checkoutBtn.disabled = true;
 
         try {
-            // Đường dẫn tương đối giúp chạy đúng trên mọi tên miền của Cloudflare
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -77,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.url) {
                 window.location.href = data.url; 
             } else {
-                // Nếu result.message từ MoMo báo chữ ký sai, nó sẽ hiển thị ở đây
                 throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
             }
         } catch (error) {

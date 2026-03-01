@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const parentCategories = allCategories.filter(cat => cat.parentId === null);
         const childCategories = allCategories.filter(cat => cat.parentId !== null);
 
-        let navHTML = `<li class="nav-item"><a href="index.html" class="nav-link"><i class="fa-brands fa-apple" style="font-size: 1.2rem;"></i></a></li>`;
+        let navHTML = `<li class="nav-item"><a href="index.html" class="nav-link"><i class="fa-solid fa-store" style="font-size: 1.2rem;"></i></a></li>`;
 
         parentCategories.forEach(parent => {
             navHTML += `<li class="nav-item has-dropdown" data-id="${parent.id}"><a href="#" class="nav-link">${parent.name}</a></li>`;

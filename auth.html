@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tài khoản - Apple Store</title>
+    <title>Tài khoản - FStore</title>
     <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="./assets/css/auth.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">
-        <a href="index.html" class="back-home"><i class="fa-brands fa-apple"></i></a>
+        <a href="index.html" class="back-home"><i class="fa-solid fa-store"></i></a>
 
         <div class="auth-box" id="loginBox">
             <h2>Đăng nhập</h2>
@@ -20,11 +20,11 @@
                 <button type="submit" class="btn-auth">Tiếp tục</button>
             </form>
             <p id="loginError" class="error-msg"></p>
-            <p class="switch-auth">Chưa có ID Apple? <span id="toRegister">Tạo mới ngay</span></p>
+            <p class="switch-auth">Chưa có tài khoản? <span id="toRegister">Tạo mới ngay</span></p>
         </div>
 
         <div class="auth-box" id="registerBox" style="display: none;">
-            <h2>Tạo ID Apple</h2>
+            <h2>Đăng ký tài khoản</h2>
             <form id="registerForm">
                 <input type="text" id="regName" placeholder="Họ và tên" required>
                 <input type="email" id="regEmail" placeholder="Email" required>
@@ -37,7 +37,7 @@
                 <button class="btn-auth" id="btnVerifyOtp">Xác nhận đăng ký</button>
             </div>
             <p id="regError" class="error-msg"></p>
-            <p class="switch-auth">Đã có ID Apple? <span id="toLogin">Đăng nhập</span></p>
+            <p class="switch-auth">Đã có tài khoản? <span id="toLogin">Đăng nhập</span></p>
         </div>
     </div>
 
