@@ -4,25 +4,91 @@
     <meta charset="UTF-8">
     <title>Thanh toán thành công</title>
     <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .success-box { text-align: center; margin-top: 150px; }
         .success-box i { font-size: 80px; color: #34c759; margin-bottom: 20px; }
         .btn-home { display: inline-block; margin-top: 30px; padding: 12px 25px; background: #0071e3; color: #fff; border-radius: 20px; text-decoration: none; }
+        #loadingMsg { color: #86868b; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="success-box">
-        <i class="fa-solid fa-circle-check"></i>
-        <h1>Cảm ơn bạn đã đặt hàng!</h1>
-        <p>Giao dịch của bạn đã được xử lý thành công qua MoMo.</p>
-        <a href="index.html" class="btn-home" id="clearCart">Quay về trang chủ</a>
+        <i class="fa-solid fa-circle-check" id="statusIcon"></i>
+        <h1 id="statusTitle">Đang xử lý đơn hàng...</h1>
+        <p id="statusDesc">Vui lòng không đóng trình duyệt, hệ thống đang lưu giao dịch của bạn.</p>
+        <p id="loadingMsg"><i class="fa-solid fa-spinner fa-spin"></i> Đang đồng bộ dữ liệu...</p>
+        <a href="index.html" class="btn-home" id="btnHome" style="display: none;">Quay về trang chủ</a>
     </div>
 
     <script type="module">
-        import { auth } from './models/firebaseConfig.js';
-        document.getElementById('clearCart').addEventListener('click', () => {
-            const user = auth.currentUser;
-            if(user) localStorage.removeItem(`cart_${user.uid}`);
+        import { auth, db } from './models/firebaseConfig.js';
+        import { collection, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const resultCode = urlParams.get('resultCode'); // MoMo trả về 0 là thành công
+            const orderId = urlParams.get('orderId');
+            const amount = urlParams.get('amount');
+
+            const statusTitle = document.getElementById('statusTitle');
+            const statusDesc = document.getElementById('statusDesc');
+            const statusIcon = document.getElementById('statusIcon');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const btnHome = document.getElementById('btnHome');
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    if (resultCode === "0") {
+                        try {
+                            // 1. Lấy giỏ hàng hiện tại để làm chi tiết đơn hàng
+                            const cartKey = `cart_${user.uid}`;
+                            const currentCart = JSON.parse(localStorage.getItem(cartKey)) || [];
+
+                            if (currentCart.length > 0) {
+                                // 2. Lưu vào Firestore collection "orders"
+                                await setDoc(doc(db, "orders", orderId), {
+                                    orderId: orderId,
+                                    userId: user.uid,
+                                    userEmail: user.email,
+                                    items: currentCart,
+                                    totalAmount: Number(amount),
+                                    paymentMethod: "MoMo Sandbox",
+                                    status: "Đã thanh toán",
+                                    createdAt: new Date()
+                                });
+
+                                // 3. Xóa giỏ hàng sau khi lưu thành công
+                                localStorage.removeItem(cartKey);
+                            }
+
+                            // 4. Hiển thị thông báo thành công
+                            statusIcon.className = "fa-solid fa-circle-check";
+                            statusIcon.style.color = "#34c759";
+                            statusTitle.innerText = "Cảm ơn bạn đã đặt hàng!";
+                            statusDesc.innerText = `Giao dịch ${orderId} đã được xử lý thành công qua MoMo.`;
+                            
+                        } catch (error) {
+                            console.error("Lỗi lưu đơn hàng:", error);
+                            statusTitle.innerText = "Thanh toán thành công nhưng lỗi đồng bộ!";
+                            statusDesc.innerText = "Vui lòng liên hệ Admin để kiểm tra lại đơn hàng.";
+                        }
+                    } else {
+                        // Người dùng hủy thanh toán hoặc giao dịch thất bại
+                        statusIcon.className = "fa-solid fa-circle-xmark";
+                        statusIcon.style.color = "#ff3b30";
+                        statusTitle.innerText = "Thanh toán thất bại hoặc đã bị hủy!";
+                        statusDesc.innerText = "Đơn hàng của bạn chưa được ghi nhận. Vui lòng thử lại.";
+                    }
+                } else {
+                    statusTitle.innerText = "Lỗi phiên đăng nhập!";
+                    statusDesc.innerText = "Không tìm thấy thông tin tài khoản của bạn.";
+                }
+
+                loadingMsg.style.display = "none";
+                btnHome.style.display = "inline-block";
+            });
         });
     </script>
 </body>
