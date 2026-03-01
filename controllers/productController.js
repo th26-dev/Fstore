@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const productPopover = document.getElementById('productPopover');
     const closePopoverBtn = document.getElementById('closePopoverBtn');
     const popoverImg = document.getElementById('popoverImg');
+    const popoverThumbnails = document.getElementById('popoverThumbnails'); // Vùng chứa ảnh nhỏ
     const popoverName = document.getElementById('popoverName');
     const popoverDesc = document.getElementById('popoverDesc');
     const popoverSpecs = document.getElementById('popoverSpecs');
@@ -38,9 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         products.forEach(prod => {
             const defaultVariant = prod.variants[0]; 
+            // Hỗ trợ cả mảng ảnh mới hoặc ảnh đơn cũ
+            const displayImg = defaultVariant.images ? defaultVariant.images[0] : defaultVariant.image;
             html += `
                 <div class="product-card" data-id="${prod.id}">
-                    <img src="${defaultVariant.image}" alt="${prod.name}" class="product-img">
+                    <img src="${displayImg}" alt="${prod.name}" class="product-img">
                     <h3 class="product-name">${prod.name}</h3>
                     <p class="product-price">${formatPrice(defaultVariant.price)}</p>
                     <a href="#" class="btn-view">Xem chi tiết</a>
@@ -49,6 +52,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         productGrid.innerHTML = html;
         window.scrollTo({ top: 300, behavior: 'smooth' });
+    };
+
+    const updatePopoverVariantUI = () => {
+        // Hỗ trợ mảng ảnh mới hoặc ảnh đơn cũ
+        const imageList = selectedVariant.images || [selectedVariant.image];
+        
+        popoverImg.src = imageList[0];
+        popoverPrice.innerText = formatPrice(selectedVariant.price);
+
+        // Render dãy ảnh thu nhỏ
+        let thumbsHtml = '';
+        imageList.forEach((imgUrl, idx) => {
+            thumbsHtml += `<img src="${imgUrl}" class="thumb-img ${idx === 0 ? 'active' : ''}" data-src="${imgUrl}">`;
+        });
+        popoverThumbnails.innerHTML = thumbsHtml;
     };
 
     const openPopover = async (productId) => {
@@ -63,9 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 popoverName.innerText = currentProduct.name;
                 popoverDesc.innerText = currentProduct.description;
                 
+                // Render Bảng Thông số kỹ thuật đẹp mắt
                 let specsHtml = '';
-                for (const [key, value] of Object.entries(currentProduct.techSpecs)) {
-                    specsHtml += `<strong>${key.toUpperCase()}:</strong> ${value}<br>`;
+                if(currentProduct.techSpecs && Object.keys(currentProduct.techSpecs).length > 0) {
+                    for (const [key, value] of Object.entries(currentProduct.techSpecs)) {
+                        specsHtml += `
+                            <div class="spec-line">
+                                <div class="spec-name">${key}</div>
+                                <div class="spec-value">${value}</div>
+                            </div>`;
+                    }
+                } else {
+                    specsHtml = '<p>Đang cập nhật thông số...</p>';
                 }
                 popoverSpecs.innerHTML = specsHtml;
 
@@ -84,12 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const updatePopoverVariantUI = () => {
-        popoverImg.src = selectedVariant.image;
-        popoverPrice.innerText = formatPrice(selectedVariant.price);
-    };
-
     document.addEventListener('click', async (e) => {
+        // Logic Header Danh mục
         if (e.target.classList.contains('sub-category-item')) {
             const categoryId = e.target.getAttribute('data-id');
             const categoryName = e.target.innerText;
@@ -112,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openPopover(productId);
         }
 
+        // Click đổi màu biến thể
         if (e.target.classList.contains('variant-btn')) {
             document.querySelectorAll('.variant-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
@@ -120,38 +144,44 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedVariant = currentProduct.variants[variantIndex];
             updatePopoverVariantUI();
         }
+
+        // BẮT SỰ KIỆN CLICK VÀO ẢNH THU NHỎ ĐỂ ĐỔI ẢNH CHÍNH
+        if (e.target.classList.contains('thumb-img')) {
+            popoverImg.src = e.target.getAttribute('data-src');
+            document.querySelectorAll('.thumb-img').forEach(img => img.classList.remove('active'));
+            e.target.classList.add('active');
+        }
     });
 
     closePopoverBtn.addEventListener('click', () => {
         productPopover.classList.remove('active');
     });
 
-   addToCartBtn.addEventListener('click', () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-        window.location.href = 'auth.html';
-        return;
-    }
+    addToCartBtn.addEventListener('click', () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            window.location.href = 'auth.html';
+            return;
+        }
 
-    // Tạo đối tượng sản phẩm để lưu
-    const productToSave = {
-        id: currentProduct.id,
-        name: currentProduct.name,
-        price: selectedVariant.price,
-        image: selectedVariant.image,
-        color: selectedVariant.color,
-        storage: selectedVariant.storage
-    };
+        const productToSave = {
+            id: currentProduct.id,
+            name: currentProduct.name,
+            price: selectedVariant.price,
+            image: selectedVariant.images ? selectedVariant.images[0] : selectedVariant.image,
+            color: selectedVariant.color,
+            storage: selectedVariant.storage
+        };
 
-    // Lấy giỏ hàng cũ ra, thêm cái mới vào, rồi lưu lại
-    const cartKey = `cart_${currentUser.uid}`;
-    const currentCart = JSON.parse(localStorage.getItem(cartKey)) || [];
-    currentCart.push(productToSave);
-    localStorage.setItem(cartKey, JSON.stringify(currentCart));
+        const cartKey = `cart_${currentUser.uid}`;
+        const currentCart = JSON.parse(localStorage.getItem(cartKey)) || [];
+        currentCart.push(productToSave);
+        localStorage.setItem(cartKey, JSON.stringify(currentCart));
 
-    alert(`Đã thêm ${currentProduct.name} vào giỏ hàng!`);
-    productPopover.classList.remove('active'); // Đóng popover sau khi thêm
-});
+        alert(`Đã thêm ${currentProduct.name} vào giỏ hàng!`);
+        productPopover.classList.remove('active');
+    });
+
     searchInput.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
             const keyword = searchInput.value.toLowerCase().trim();

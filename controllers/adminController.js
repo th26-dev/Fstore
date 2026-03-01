@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Chuyển tab
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -20,9 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     let categoriesList = [];
-    let isEditCategory = false; // Cờ kiểm tra trạng thái Thêm hay Sửa danh mục
+    let isEditCategory = false;
 
-    // --- KIỂM TRA QUYỀN ADMIN ---
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
             window.location.href = 'auth.html';
@@ -38,9 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- TẢI DỮ LIỆU ---
     const loadAdminData = async () => {
-        // 1. Tải Danh mục
+        // Tải Danh mục
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
         categoriesList = [];
         let catHtml = '';
@@ -69,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('catParentId').innerHTML = parentOptionsHtml;
         document.getElementById('prodCategory').innerHTML = prodCatOptionsHtml;
 
-        // 2. Tải Sản phẩm
+        // Tải Sản phẩm
         const prodSnap = await getDocs(collection(db, "products"));
         document.getElementById('statProducts').innerText = prodSnap.size;
         let prodHtml = '';
@@ -85,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('adminProductList').innerHTML = prodHtml;
 
-        // 3. Tải Đơn hàng
+        // Tải Đơn hàng
         const orderSnap = await getDocs(collection(db, "orders"));
         document.getElementById('statOrders').innerText = orderSnap.size;
         let totalRev = 0, orderHtml = '';
@@ -97,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('statRevenue').innerText = formatPrice(totalRev);
         document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="4">Chưa có đơn hàng</td></tr>';
 
-        // 4. Tải Diễn đàn
+        // Tải Diễn đàn
         const forumSnap = await getDocs(query(collection(db, "forum_posts"), orderBy("createdAt", "desc")));
         let forumHtml = '';
         forumSnap.forEach(snap => {
@@ -108,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('adminForumList').innerHTML = forumHtml || '<tr><td colspan="3">Không có câu hỏi mới</td></tr>';
     };
 
-    // --- LOGIC MODAL DANH MỤC ---
+    // --- LOGIC DANH MỤC ---
     const catModal = document.getElementById('categoryModal');
     
     document.getElementById('btnAddCategory').onclick = () => { 
@@ -163,18 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminData();
     });
 
-    // --- XÓA DÂY CHUYỀN DANH MỤC ---
+    // Hàm Xóa Danh mục (Xóa dây chuyền: Cha -> Con -> Sản phẩm)
     window.deleteCategory = async (id) => {
         if(confirm("CẢNH BÁO: Bạn có chắc muốn xóa danh mục này?\n\nNẾU ĐÂY LÀ DANH MỤC CHA: Tất cả Danh mục con và Sản phẩm bên trong sẽ bị xóa sạch!\nNẾU ĐÂY LÀ DANH MỤC CON: Tất cả Sản phẩm thuộc danh mục này sẽ bị xóa!")) {
-            
             try {
-                // 1. Tìm các danh mục con của danh mục đang bị xóa
                 const childCategories = categoriesList.filter(c => c.parentId === id);
                 const childCategoryIds = childCategories.map(c => c.id);
-
                 const allCategoryIdsToDelete = [id, ...childCategoryIds];
 
-                // 2. Tìm tất cả sản phẩm đang nằm trong các danh mục chuẩn bị xóa
                 const prodSnap = await getDocs(collection(db, "products"));
                 const deletePromises = []; 
 
@@ -185,20 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // 3. Lệnh xóa các danh mục con
                 childCategoryIds.forEach(childId => {
                     deletePromises.push(deleteDoc(doc(db, "categories", childId)));
                 });
 
-                // 4. Lệnh xóa chính danh mục đang chọn
                 deletePromises.push(deleteDoc(doc(db, "categories", id)));
-
-                // 5. Thực thi toàn bộ lệnh xóa cùng một lúc (Tối ưu tốc độ)
                 await Promise.all(deletePromises);
 
                 alert("Đã quét sạch danh mục và toàn bộ dữ liệu liên quan!");
                 loadAdminData(); 
-                
             } catch (error) {
                 console.error("Lỗi khi xóa dây chuyền:", error);
                 alert("Có lỗi xảy ra khi xóa dữ liệu!");
@@ -209,11 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LOGIC MODAL SẢN PHẨM ---
     const prodModal = document.getElementById('productModal');
     const variantsContainer = document.getElementById('variantsContainer');
+    const specsContainer = document.getElementById('specsContainer');
     
     document.getElementById('btnAddProduct').onclick = () => { 
         document.getElementById('productForm').reset(); 
         variantsContainer.innerHTML = ''; 
+        specsContainer.innerHTML = ''; 
         addVariantRow(); 
+        addSpecRow();
         prodModal.style.display = "block"; 
     }
     document.getElementById('closeProdModal').onclick = () => prodModal.style.display = "none";
@@ -225,28 +216,55 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" placeholder="Màu sắc (VD: Đen)" class="v-color" required>
             <input type="text" placeholder="Dung lượng (VD: 256GB)" class="v-storage" required>
             <input type="number" placeholder="Giá tiền (VNĐ)" class="v-price" required>
-            <input type="text" placeholder="Link ảnh (URL)" class="v-image" required>
+            <input type="text" placeholder="Link ảnh 1, Link ảnh 2..." class="v-image" required title="Cách nhau bởi dấu phẩy">
             <button type="button" class="btn-action btn-del" onclick="this.parentElement.remove()">X</button>
         `;
         variantsContainer.appendChild(row);
     };
     document.getElementById('btnAddVariant').onclick = addVariantRow;
 
+    const addSpecRow = () => {
+        const row = document.createElement('div');
+        row.className = 'variant-row';
+        row.innerHTML = `
+            <input type="text" placeholder="Tên (VD: Màn hình)" class="s-key">
+            <input type="text" placeholder="Giá trị (VD: 6.2 inches)" class="s-val" style="flex: 2;">
+            <button type="button" class="btn-action btn-del" onclick="this.parentElement.remove()">X</button>
+        `;
+        specsContainer.appendChild(row);
+    };
+    document.getElementById('btnAddSpec').onclick = addSpecRow;
+
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Thu thập Biến thể và tách chuỗi ảnh bằng dấu phẩy
         const variants = [];
-        document.querySelectorAll('.variant-row').forEach((row, index) => {
+        document.querySelectorAll('#variantsContainer .variant-row').forEach((row, index) => {
+            const rawImages = row.querySelector('.v-image').value;
+            const imgArray = rawImages.split(',').map(img => img.trim()).filter(img => img !== '');
+
             variants.push({
                 variantId: `v${index + 1}`,
                 color: row.querySelector('.v-color').value,
                 storage: row.querySelector('.v-storage').value,
                 price: Number(row.querySelector('.v-price').value),
-                image: row.querySelector('.v-image').value,
+                images: imgArray.length > 0 ? imgArray : ["https://via.placeholder.com/400"],
                 stock: 100 
             });
         });
 
         if (variants.length === 0) return alert("Vui lòng thêm ít nhất 1 biến thể!");
+
+        // Thu thập Thông số kỹ thuật thành Object
+        const techSpecs = {};
+        document.querySelectorAll('#specsContainer .variant-row').forEach(row => {
+            const key = row.querySelector('.s-key').value.trim();
+            const val = row.querySelector('.s-val').value.trim();
+            if(key && val) {
+                techSpecs[key] = val;
+            }
+        });
 
         const newId = "prod_" + Date.now();
         const data = {
@@ -254,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: document.getElementById('prodName').value.trim(),
             categoryId: document.getElementById('prodCategory').value,
             description: document.getElementById('prodDesc').value.trim(),
-            techSpecs: { info: "Cập nhật sau" }, 
+            techSpecs: techSpecs, 
             variants: variants
         };
 
@@ -271,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- LOGIC DIỄN ĐÀN ---
     window.replyForum = async (id) => {
         const reply = prompt("Nhập nội dung trả lời:");
         if (reply) {

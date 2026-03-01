@@ -146,3 +146,40 @@
     .popover-grid { grid-template-columns: 1fr; gap: 20px; }
     .popover-content { padding: 30px 20px; height: 90vh; overflow-y: auto; }
 }
+
+/* CSS cho ảnh thu nhỏ */
+.thumb-img { 
+    width: 60px; 
+    height: 60px; 
+    object-fit: cover; 
+    border-radius: 8px; 
+    border: 2px solid transparent; 
+    cursor: pointer; 
+    transition: 0.2s; 
+}
+.thumb-img:hover { transform: translateY(-2px); }
+.thumb-img.active { border-color: #0071e3; }
+
+/* CSS cho bảng thông số kỹ thuật */
+.popover-specs { 
+    margin: 15px 0; 
+    font-size: 14px; 
+    background: #f5f5f7; 
+    padding: 15px; 
+    border-radius: 12px; 
+}
+.spec-line { 
+    display: flex; 
+    padding: 6px 0; 
+    border-bottom: 1px solid #e5e5ea; 
+}
+.spec-line:last-child { border-bottom: none; }
+.spec-name { 
+    width: 40%; 
+    font-weight: bold; 
+    color: #333; 
+}
+.spec-value { 
+    width: 60%; 
+    color: #1d1d1f; 
+}
