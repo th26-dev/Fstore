@@ -3,12 +3,10 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { doc, getDoc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Các phần tử giao diện cơ bản
     const adminEmail = document.getElementById('adminEmail');
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Chuyển Tab
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -18,13 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Định dạng tiền
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
-    // Biến toàn cục lưu danh mục để dùng lại
     let categoriesList = [];
+    let isEditCategory = false; // Biến cờ để kiểm tra đang Thêm hay Sửa danh mục
 
-    // --- XÁC THỰC QUYỀN ADMIN ---
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
             window.location.href = 'auth.html';
@@ -40,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- TẢI TOÀN BỘ DỮ LIỆU ---
     const loadAdminData = async () => {
         // 1. Tải Danh mục
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
@@ -53,14 +48,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const c = doc.data();
             categoriesList.push(c);
             const parentName = c.parentId ? categoriesList.find(x => x.id === c.parentId)?.name || c.parentId : "Gốc";
+            
+            // Đã thêm nút "Sửa" vào giao diện
             catHtml += `<tr>
                 <td>${c.id}</td>
                 <td><strong>${c.name}</strong></td>
                 <td>${parentName}</td>
-                <td><button class="btn-action btn-del" onclick="deleteCategory('${c.id}')">Xóa</button></td>
+                <td>
+                    <button class="btn-action btn-save" onclick="editCategory('${c.id}')" style="margin-right: 5px; background: #f59e0b;">Sửa</button>
+                    <button class="btn-action btn-del" onclick="deleteCategory('${c.id}')">Xóa</button>
+                </td>
             </tr>`;
             
-            // Đổ vào Select Box
             if(!c.parentId) parentOptionsHtml += `<option value="${c.id}">${c.name}</option>`;
             if(c.parentId) prodCatOptionsHtml += `<option value="${c.id}">${c.name}</option>`;
         });
@@ -74,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let prodHtml = '';
         prodSnap.forEach(doc => {
             const p = doc.data();
-            // Lấy tên danh mục động từ categoriesList
             const catName = categoriesList.find(c => c.id === p.categoryId)?.name || "Chưa phân loại";
             prodHtml += `<tr>
                 <td>${p.name}</td>
@@ -85,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('adminProductList').innerHTML = prodHtml;
 
-        // 3. Tải Đơn hàng & Forum (Tương tự code cũ)
+        // 3. Tải Đơn hàng
         const orderSnap = await getDocs(collection(db, "orders"));
         document.getElementById('statOrders').innerText = orderSnap.size;
         let totalRev = 0, orderHtml = '';
@@ -97,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('statRevenue').innerText = formatPrice(totalRev);
         document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="4">Chưa có đơn hàng</td></tr>';
 
+        // 4. Tải Diễn đàn
         const forumSnap = await getDocs(query(collection(db, "forum_posts"), orderBy("createdAt", "desc")));
         let forumHtml = '';
         forumSnap.forEach(snap => {
@@ -109,26 +108,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LOGIC MODAL DANH MỤC ---
     const catModal = document.getElementById('categoryModal');
-    document.getElementById('btnAddCategory').onclick = () => { document.getElementById('categoryForm').reset(); catModal.style.display = "block"; }
+    
+    // Nút Thêm mới
+    document.getElementById('btnAddCategory').onclick = () => { 
+        isEditCategory = false; // Chuyển cờ sang Thêm mới
+        document.getElementById('categoryForm').reset(); 
+        document.getElementById('catId').readOnly = false; // Cho phép nhập ID
+        document.getElementById('catModalTitle').innerText = "Thêm Danh Mục Mới";
+        catModal.style.display = "block"; 
+    }
+    
     document.getElementById('closeCatModal').onclick = () => catModal.style.display = "none";
 
+    // Hàm gọi khi bấm nút Sửa
+    window.editCategory = (id) => {
+        isEditCategory = true; // Chuyển cờ sang Sửa
+        const cat = categoriesList.find(c => c.id === id);
+        if (cat) {
+            document.getElementById('catId').value = cat.id;
+            document.getElementById('catId').readOnly = true; // KHÔNG cho phép sửa ID gốc
+            document.getElementById('catName').value = cat.name;
+            document.getElementById('catParentId').value = cat.parentId || "";
+            document.getElementById('catModalTitle').innerText = "Sửa Danh Mục";
+            catModal.style.display = "block";
+        }
+    };
+
+    // Xử lý Lưu / Cập nhật Danh mục
     document.getElementById('categoryForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('catId').value.trim();
+        const parentId = document.getElementById('catParentId').value || null;
+
+        // Chặn lỗi: Danh mục không thể tự làm cha của chính nó
+        if (isEditCategory && id === parentId) {
+            alert("Lỗi: Một danh mục không thể làm danh mục cha của chính nó!");
+            return;
+        }
+
         const data = {
             id: id,
             name: document.getElementById('catName').value.trim(),
-            parentId: document.getElementById('catParentId').value || null,
-            order: categoriesList.length + 1
+            parentId: parentId,
+            order: isEditCategory ? categoriesList.find(c => c.id === id).order : categoriesList.length + 1
         };
-        await setDoc(doc(db, "categories", id), data);
-        alert("Lưu danh mục thành công!");
+
+        if (isEditCategory) {
+            await updateDoc(doc(db, "categories", id), data);
+            alert("Cập nhật danh mục thành công!");
+        } else {
+            await setDoc(doc(db, "categories", id), data);
+            alert("Thêm danh mục thành công!");
+        }
+        
         catModal.style.display = "none";
         loadAdminData();
     });
 
+    // Hàm Xóa Danh mục (Có kiểm tra an toàn)
     window.deleteCategory = async (id) => {
-        if(confirm("Bạn có chắc muốn xóa danh mục này?")) {
+        // Kiểm tra xem danh mục này có đang là cha của danh mục nào khác không
+        const hasChildren = categoriesList.some(c => c.parentId === id);
+        if (hasChildren) {
+            alert("KHÔNG THỂ XÓA: Danh mục này đang chứa các danh mục con. Bạn phải xóa hoặc di chuyển các danh mục con trước!");
+            return;
+        }
+
+        if(confirm("Bạn có chắc muốn xóa danh mục này? Thao tác này không thể hoàn tác.")) {
             await deleteDoc(doc(db, "categories", id));
             loadAdminData();
         }
@@ -140,13 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('btnAddProduct').onclick = () => { 
         document.getElementById('productForm').reset(); 
-        variantsContainer.innerHTML = ''; // Xóa trắng biến thể
-        addVariantRow(); // Thêm 1 dòng trống mặc định
+        variantsContainer.innerHTML = ''; 
+        addVariantRow(); 
         prodModal.style.display = "block"; 
     }
     document.getElementById('closeProdModal').onclick = () => prodModal.style.display = "none";
 
-    // Hàm tạo dòng biến thể động
     const addVariantRow = () => {
         const row = document.createElement('div');
         row.className = 'variant-row';
@@ -161,11 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     document.getElementById('btnAddVariant').onclick = addVariantRow;
 
-    // Lưu Sản Phẩm
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        // Thu thập mảng biến thể
         const variants = [];
         document.querySelectorAll('.variant-row').forEach((row, index) => {
             variants.push({
@@ -174,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 storage: row.querySelector('.v-storage').value,
                 price: Number(row.querySelector('.v-price').value),
                 image: row.querySelector('.v-image').value,
-                stock: 100 // Mặc định
+                stock: 100 
             });
         });
 
@@ -186,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: document.getElementById('prodName').value.trim(),
             categoryId: document.getElementById('prodCategory').value,
             description: document.getElementById('prodDesc').value.trim(),
-            techSpecs: { info: "Cập nhật sau" }, // Giữ đơn giản
+            techSpecs: { info: "Cập nhật sau" }, 
             variants: variants
         };
 
@@ -203,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- LOGIC DIỄN ĐÀN (Cũ) ---
+    // --- LOGIC DIỄN ĐÀN ---
     window.replyForum = async (id) => {
         const reply = prompt("Nhập nội dung trả lời:");
         if (reply) {
