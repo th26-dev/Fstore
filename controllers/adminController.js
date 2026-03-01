@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
     const tabContents = document.querySelectorAll('.tab-content');
 
+    // Chuyển tab
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
@@ -19,8 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     let categoriesList = [];
-    let isEditCategory = false; // Biến cờ để kiểm tra đang Thêm hay Sửa danh mục
+    let isEditCategory = false; // Cờ kiểm tra trạng thái Thêm hay Sửa danh mục
 
+    // --- KIỂM TRA QUYỀN ADMIN ---
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
             window.location.href = 'auth.html';
@@ -36,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- TẢI DỮ LIỆU ---
     const loadAdminData = async () => {
         // 1. Tải Danh mục
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
@@ -49,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
             categoriesList.push(c);
             const parentName = c.parentId ? categoriesList.find(x => x.id === c.parentId)?.name || c.parentId : "Gốc";
             
-            // Đã thêm nút "Sửa" vào giao diện
             catHtml += `<tr>
                 <td>${c.id}</td>
                 <td><strong>${c.name}</strong></td>
@@ -109,24 +111,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LOGIC MODAL DANH MỤC ---
     const catModal = document.getElementById('categoryModal');
     
-    // Nút Thêm mới
     document.getElementById('btnAddCategory').onclick = () => { 
-        isEditCategory = false; // Chuyển cờ sang Thêm mới
+        isEditCategory = false; 
         document.getElementById('categoryForm').reset(); 
-        document.getElementById('catId').readOnly = false; // Cho phép nhập ID
+        document.getElementById('catId').readOnly = false; 
         document.getElementById('catModalTitle').innerText = "Thêm Danh Mục Mới";
         catModal.style.display = "block"; 
     }
     
     document.getElementById('closeCatModal').onclick = () => catModal.style.display = "none";
 
-    // Hàm gọi khi bấm nút Sửa
     window.editCategory = (id) => {
-        isEditCategory = true; // Chuyển cờ sang Sửa
+        isEditCategory = true; 
         const cat = categoriesList.find(c => c.id === id);
         if (cat) {
             document.getElementById('catId').value = cat.id;
-            document.getElementById('catId').readOnly = true; // KHÔNG cho phép sửa ID gốc
+            document.getElementById('catId').readOnly = true; 
             document.getElementById('catName').value = cat.name;
             document.getElementById('catParentId').value = cat.parentId || "";
             document.getElementById('catModalTitle').innerText = "Sửa Danh Mục";
@@ -134,13 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Xử lý Lưu / Cập nhật Danh mục
     document.getElementById('categoryForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('catId').value.trim();
         const parentId = document.getElementById('catParentId').value || null;
 
-        // Chặn lỗi: Danh mục không thể tự làm cha của chính nó
         if (isEditCategory && id === parentId) {
             alert("Lỗi: Một danh mục không thể làm danh mục cha của chính nó!");
             return;
@@ -165,18 +163,46 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminData();
     });
 
-    // Hàm Xóa Danh mục (Có kiểm tra an toàn)
+    // --- XÓA DÂY CHUYỀN DANH MỤC ---
     window.deleteCategory = async (id) => {
-        // Kiểm tra xem danh mục này có đang là cha của danh mục nào khác không
-        const hasChildren = categoriesList.some(c => c.parentId === id);
-        if (hasChildren) {
-            alert("KHÔNG THỂ XÓA: Danh mục này đang chứa các danh mục con. Bạn phải xóa hoặc di chuyển các danh mục con trước!");
-            return;
-        }
+        if(confirm("CẢNH BÁO: Bạn có chắc muốn xóa danh mục này?\n\nNẾU ĐÂY LÀ DANH MỤC CHA: Tất cả Danh mục con và Sản phẩm bên trong sẽ bị xóa sạch!\nNẾU ĐÂY LÀ DANH MỤC CON: Tất cả Sản phẩm thuộc danh mục này sẽ bị xóa!")) {
+            
+            try {
+                // 1. Tìm các danh mục con của danh mục đang bị xóa
+                const childCategories = categoriesList.filter(c => c.parentId === id);
+                const childCategoryIds = childCategories.map(c => c.id);
 
-        if(confirm("Bạn có chắc muốn xóa danh mục này? Thao tác này không thể hoàn tác.")) {
-            await deleteDoc(doc(db, "categories", id));
-            loadAdminData();
+                const allCategoryIdsToDelete = [id, ...childCategoryIds];
+
+                // 2. Tìm tất cả sản phẩm đang nằm trong các danh mục chuẩn bị xóa
+                const prodSnap = await getDocs(collection(db, "products"));
+                const deletePromises = []; 
+
+                prodSnap.forEach(docSnap => {
+                    const prod = docSnap.data();
+                    if (allCategoryIdsToDelete.includes(prod.categoryId)) {
+                        deletePromises.push(deleteDoc(doc(db, "products", docSnap.id)));
+                    }
+                });
+
+                // 3. Lệnh xóa các danh mục con
+                childCategoryIds.forEach(childId => {
+                    deletePromises.push(deleteDoc(doc(db, "categories", childId)));
+                });
+
+                // 4. Lệnh xóa chính danh mục đang chọn
+                deletePromises.push(deleteDoc(doc(db, "categories", id)));
+
+                // 5. Thực thi toàn bộ lệnh xóa cùng một lúc (Tối ưu tốc độ)
+                await Promise.all(deletePromises);
+
+                alert("Đã quét sạch danh mục và toàn bộ dữ liệu liên quan!");
+                loadAdminData(); 
+                
+            } catch (error) {
+                console.error("Lỗi khi xóa dây chuyền:", error);
+                alert("Có lỗi xảy ra khi xóa dữ liệu!");
+            }
         }
     };
 
