@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FStore</title>
+    <title>FStore - Cửa Hàng Điện Tử</title>
     <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="./assets/css/header.css">
     <link rel="stylesheet" href="./assets/css/home.css">
@@ -29,11 +29,47 @@
 
     <div id="pageOverlay" class="page-overlay"></div>
 
-    <video autoplay muted loop playsinline class="bg-video-overlay">
-        <source src="./assets/media/Introducing Galaxy S25 Ultra Galaxy AI Samsung.mp4" type="video/mp4">
-    </video>
+    <div id="landingPage" class="landing-page-container dark-theme">
+        
+        <section class="landing-section scroll-anim slide-up" style="padding-top: 60px;">
+            <h1 class="landing-title">Galaxy S26 Ultra</h1>
+            <p class="landing-subtitle">Kỷ nguyên AI mới. Quyền năng đột phá.</p>
+            
+            <div class="ambilight-wrapper">
+                <video autoplay muted loop playsinline class="ambilight-glow">
+                    <source src="./assets/media/Privacy Display _ Galaxy S26 Ultra _ Samsung - (1080p).mp4" type="video/mp4">
+                </video>
+                <video autoplay muted loop playsinline class="landing-media">
+                    <source src="./assets/media/Privacy Display _ Galaxy S26 Ultra _ Samsung - (1080p).mp4" type="video/mp4">
+                </video>
+            </div>
+        </section>
 
-    <main class="main-content">
+        <section class="landing-section scroll-anim slide-up" style="margin-top: 100px; padding: 80px 20px;">
+            <div class="split-container">
+                
+                <div class="split-text">
+                    <h2>Thiết kế titan.<br>Tuyệt đẹp.</h2>
+                    <p>Mạnh mẽ hơn. Nhẹ nhàng hơn. Đẳng cấp hơn bao giờ hết. Khung viền titan mới mang lại độ bền vượt trội và cảm giác cầm nắm hoàn hảo, giúp bạn tự tin tỏa sáng mọi lúc mọi nơi.</p>
+                </div>
+
+                <div class="split-media">
+                    <div class="ambilight-wrapper">
+                        <video autoplay muted loop playsinline class="ambilight-glow">
+                            <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                        </video>
+                        <video autoplay muted loop playsinline class="landing-media">
+                            <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+        
+    </div>
+
+    <main class="main-content" id="mainContent" style="display: none; padding-top: 80px;">
         <div class="product-section">
             <h2 id="sectionTitle" style="display: none;">Danh sách sản phẩm</h2>
             <div class="product-grid" id="productGrid"></div>
@@ -44,8 +80,9 @@
         <div class="popover-content">
             <i class="fa-solid fa-xmark close-popover" id="closePopoverBtn"></i>
             <div class="popover-grid">
-                <div class="popover-image-col">
-                    <img src="" id="popoverImg" alt="">
+                <div class="popover-image-col" style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <img src="" id="popoverImg" alt="" style="cursor: pointer;">
+                    <div id="imageDots" class="carousel-dots"></div>
                 </div>
                 <div class="popover-info-col">
                     <h2 id="popoverName"></h2>

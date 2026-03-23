@@ -9,10 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageOverlay = document.getElementById('pageOverlay');
     const megaMenu = document.getElementById('megaMenu');
     
+    // Các phần tử Landing Page và Main Content mới
+    const landingPage = document.getElementById('landingPage');
+    const mainContent = document.getElementById('mainContent');
+    
     const productPopover = document.getElementById('productPopover');
     const closePopoverBtn = document.getElementById('closePopoverBtn');
     const popoverImg = document.getElementById('popoverImg');
-    const popoverThumbnails = document.getElementById('popoverThumbnails'); // Vùng chứa ảnh nhỏ
     const popoverName = document.getElementById('popoverName');
     const popoverDesc = document.getElementById('popoverDesc');
     const popoverSpecs = document.getElementById('popoverSpecs');
@@ -22,25 +25,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentProduct = null;
     let selectedVariant = null;
+    let currentImageIndex = 0; 
+    let slideInterval; 
+
+    // === CÀI ĐẶT HIỆU ỨNG CUỘN (SCROLL ANIMATION) ===
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.scroll-anim').forEach(el => observer.observe(el));
     
     const formatPrice = (price) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
     const renderProducts = (products, title) => {
+        // Chuyển đổi giao diện: Ẩn quảng cáo, hiện sản phẩm
+        if (landingPage) landingPage.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
+
         sectionTitle.style.display = 'block';
         sectionTitle.innerText = title;
         
         if (products.length === 0) {
-            productGrid.innerHTML = '<p style="grid-column: 1 / -1; font-size: 18px;">Không tìm thấy sản phẩm nào.</p>';
+            productGrid.innerHTML = '<p style="grid-column: 1 / -1; font-size: 18px; text-align: center;">Không tìm thấy sản phẩm nào.</p>';
             return;
         }
 
         let html = '';
         products.forEach(prod => {
+            if(!prod.variants || prod.variants.length === 0) return; 
             const defaultVariant = prod.variants[0]; 
-            // Hỗ trợ cả mảng ảnh mới hoặc ảnh đơn cũ
-            const displayImg = defaultVariant.images ? defaultVariant.images[0] : defaultVariant.image;
+            const displayImg = defaultVariant.images ? defaultVariant.images[0] : (defaultVariant.image || "https://via.placeholder.com/400");
+            
             html += `
                 <div class="product-card" data-id="${prod.id}">
                     <img src="${displayImg}" alt="${prod.name}" class="product-img">
@@ -51,22 +72,37 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
         productGrid.innerHTML = html;
-        window.scrollTo({ top: 300, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Tự động cuộn lên khi load xong danh mục
     };
 
     const updatePopoverVariantUI = () => {
-        // Hỗ trợ mảng ảnh mới hoặc ảnh đơn cũ
-        const imageList = selectedVariant.images || [selectedVariant.image];
+        const imageList = selectedVariant.images || [selectedVariant.image || "https://via.placeholder.com/400"];
         
-        popoverImg.src = imageList[0];
-        popoverPrice.innerText = formatPrice(selectedVariant.price);
+        if (currentImageIndex >= imageList.length) {
+            currentImageIndex = 0;
+        }
+        
+        if (popoverImg) popoverImg.src = imageList[currentImageIndex];
+        if (popoverPrice) popoverPrice.innerText = formatPrice(selectedVariant.price);
 
-        // Render dãy ảnh thu nhỏ
-        let thumbsHtml = '';
-        imageList.forEach((imgUrl, idx) => {
-            thumbsHtml += `<img src="${imgUrl}" class="thumb-img ${idx === 0 ? 'active' : ''}" data-src="${imgUrl}">`;
-        });
-        popoverThumbnails.innerHTML = thumbsHtml;
+        const dotsContainer = document.getElementById('imageDots');
+        if (dotsContainer) {
+            let dotsHtml = '';
+            if (imageList.length > 1) {
+                imageList.forEach((_, idx) => {
+                    dotsHtml += `<div class="dot ${idx === currentImageIndex ? 'active' : ''}" data-index="${idx}"></div>`;
+                });
+            }
+            dotsContainer.innerHTML = dotsHtml;
+        }
+
+        clearInterval(slideInterval); 
+        if (imageList.length > 1) {
+            slideInterval = setInterval(() => {
+                currentImageIndex = (currentImageIndex + 1) % imageList.length;
+                updatePopoverVariantUI();
+            }, 3000); 
+        }
     };
 
     const openPopover = async (productId) => {
@@ -76,12 +112,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (docSnap.exists()) {
                 currentProduct = docSnap.data();
-                selectedVariant = currentProduct.variants[0];
+                if (!currentProduct.variants || currentProduct.variants.length === 0) return;
 
-                popoverName.innerText = currentProduct.name;
-                popoverDesc.innerText = currentProduct.description;
+                selectedVariant = currentProduct.variants[0];
+                currentImageIndex = 0; 
+
+                if (popoverName) popoverName.innerText = currentProduct.name;
+                if (popoverDesc) popoverDesc.innerText = currentProduct.description;
                 
-                // Render Bảng Thông số kỹ thuật đẹp mắt
                 let specsHtml = '';
                 if(currentProduct.techSpecs && Object.keys(currentProduct.techSpecs).length > 0) {
                     for (const [key, value] of Object.entries(currentProduct.techSpecs)) {
@@ -94,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     specsHtml = '<p>Đang cập nhật thông số...</p>';
                 }
-                popoverSpecs.innerHTML = specsHtml;
+                if (popoverSpecs) popoverSpecs.innerHTML = specsHtml;
 
                 updatePopoverVariantUI();
 
@@ -102,17 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentProduct.variants.forEach((v, index) => {
                     variantsHtml += `<button class="variant-btn ${index === 0 ? 'active' : ''}" data-index="${index}">${v.color} - ${v.storage}</button>`;
                 });
-                popoverVariants.innerHTML = variantsHtml;
+                if (popoverVariants) popoverVariants.innerHTML = variantsHtml;
 
-                productPopover.classList.add('active');
+                if (productPopover) productPopover.classList.add('active');
             }
         } catch (error) {
-            console.error(error);
+            console.error("Lỗi khi mở sản phẩm:", error);
         }
     };
 
     document.addEventListener('click', async (e) => {
-        // Logic Header Danh mục
+        // Menu Danh Mục
         if (e.target.classList.contains('sub-category-item')) {
             const categoryId = e.target.getAttribute('data-id');
             const categoryName = e.target.innerText;
@@ -129,78 +167,103 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProducts(products, categoryName);
         }
 
+        // Fix lỗi click thẻ sản phẩm
         const productCard = e.target.closest('.product-card');
         if (productCard) {
+            // Ngăn thẻ <a> nhảy trang
+            if (e.target.closest('a')) e.preventDefault();
+            
             const productId = productCard.getAttribute('data-id');
             openPopover(productId);
+            return;
         }
 
-        // Click đổi màu biến thể
+        // Đổi Biến Thể
         if (e.target.classList.contains('variant-btn')) {
+            e.preventDefault();
             document.querySelectorAll('.variant-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
             
             const variantIndex = e.target.getAttribute('data-index');
             selectedVariant = currentProduct.variants[variantIndex];
+            currentImageIndex = 0; 
             updatePopoverVariantUI();
         }
 
-        // BẮT SỰ KIỆN CLICK VÀO ẢNH THU NHỎ ĐỂ ĐỔI ẢNH CHÍNH
-        if (e.target.classList.contains('thumb-img')) {
-            popoverImg.src = e.target.getAttribute('data-src');
-            document.querySelectorAll('.thumb-img').forEach(img => img.classList.remove('active'));
-            e.target.classList.add('active');
+        // Bấm Nút Dot
+        if (e.target.classList.contains('dot')) {
+            e.preventDefault();
+            currentImageIndex = parseInt(e.target.getAttribute('data-index'));
+            updatePopoverVariantUI(); 
+        }
+
+        // Bấm trực tiếp vào Ảnh
+        if (e.target.id === 'popoverImg') {
+            e.preventDefault();
+            const imageList = selectedVariant.images || [selectedVariant.image || ""];
+            if (imageList.length > 1) {
+                currentImageIndex = (currentImageIndex + 1) % imageList.length;
+                updatePopoverVariantUI();
+            }
         }
     });
 
-    closePopoverBtn.addEventListener('click', () => {
-        productPopover.classList.remove('active');
-    });
+    if (closePopoverBtn) {
+        closePopoverBtn.addEventListener('click', () => {
+            clearInterval(slideInterval); 
+            productPopover.classList.remove('active');
+        });
+    }
 
-    addToCartBtn.addEventListener('click', () => {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-            window.location.href = 'auth.html';
-            return;
-        }
+    if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', () => {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                window.location.href = 'auth.html';
+                return;
+            }
 
-        const productToSave = {
-            id: currentProduct.id,
-            name: currentProduct.name,
-            price: selectedVariant.price,
-            image: selectedVariant.images ? selectedVariant.images[0] : selectedVariant.image,
-            color: selectedVariant.color,
-            storage: selectedVariant.storage
-        };
+            const productToSave = {
+                id: currentProduct.id,
+                name: currentProduct.name,
+                price: selectedVariant.price,
+                image: selectedVariant.images ? selectedVariant.images[0] : selectedVariant.image,
+                color: selectedVariant.color,
+                storage: selectedVariant.storage
+            };
 
-        const cartKey = `cart_${currentUser.uid}`;
-        const currentCart = JSON.parse(localStorage.getItem(cartKey)) || [];
-        currentCart.push(productToSave);
-        localStorage.setItem(cartKey, JSON.stringify(currentCart));
+            const cartKey = `cart_${currentUser.uid}`;
+            const currentCart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            currentCart.push(productToSave);
+            localStorage.setItem(cartKey, JSON.stringify(currentCart));
 
-        alert(`Đã thêm ${currentProduct.name} vào giỏ hàng!`);
-        productPopover.classList.remove('active');
-    });
+            alert(`Đã thêm ${currentProduct.name} vào giỏ hàng!`);
+            clearInterval(slideInterval); 
+            productPopover.classList.remove('active');
+        });
+    }
 
-    searchInput.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            const keyword = searchInput.value.toLowerCase().trim();
-            if (!keyword) return;
+    if (searchInput) {
+        searchInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const keyword = searchInput.value.toLowerCase().trim();
+                if (!keyword) return;
 
-            searchBarContainer.classList.remove('active');
-            pageOverlay.classList.remove('show');
-            searchInput.value = '';
+                searchBarContainer.classList.remove('active');
+                pageOverlay.classList.remove('show');
+                searchInput.value = '';
 
-            const snapshot = await getDocs(collection(db, "products"));
-            const products = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.name.toLowerCase().includes(keyword)) {
-                    products.push(data);
-                }
-            });
+                const snapshot = await getDocs(collection(db, "products"));
+                const products = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.name.toLowerCase().includes(keyword)) {
+                        products.push(data);
+                    }
+                });
 
-            renderProducts(products, `Kết quả tìm kiếm cho: "${keyword}"`);
-        }
-    });
+                renderProducts(products, `Kết quả tìm kiếm cho: "${keyword}"`);
+            }
+        });
+    }
 });

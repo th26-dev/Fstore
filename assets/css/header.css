@@ -1,14 +1,25 @@
+/* =========================================
+   HIỆU ỨNG LIQUID HEADER CHUẨN APPLE (NỀN TRẮNG)
+========================================= */
 .liquid-header {
     position: fixed;
     top: 0;
+    left: 0;
     width: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
-    backdrop-filter: saturate(180%) blur(20px);
+    height: 44px; /* Độ cao chuẩn xác của thanh điều hướng Apple */
+    
+    /* Màu trắng với độ trong suốt 85% kết hợp Blur và Saturate */
+    background-color: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: saturate(180%) blur(20px); 
     -webkit-backdrop-filter: saturate(180%) blur(20px);
-    z-index: 9999;
+    
+    /* Đường viền mỏng 1px ở đáy để phân cách nhẹ nhàng */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05); 
+    z-index: 10000;
     transition: background-color 0.3s ease;
 }
 
+/* Khi mở menu, nền trở thành màu trắng đục */
 .liquid-header.menu-open {
     background-color: rgba(255, 255, 255, 1);
 }
@@ -25,35 +36,84 @@
     align-items: center;
     list-style: none;
     height: 100%;
+    margin: 0;
     padding: 0 20px;
 }
 
-.nav-link {
-    color: #1d1d1f;
-    font-size: 12px;
+/* Chữ đen sang trọng */
+.nav-link, .nav-list li i {
+    color: #1d1d1f; 
+    font-size: 14px;
     font-weight: 400;
     letter-spacing: -0.01em;
-    transition: color 0.3s;
+    text-decoration: none;
+    opacity: 0.8; /* Mặc định hơi mờ nhẹ */
+    transition: opacity 0.3s ease, color 0.3s ease;
+    cursor: pointer;
 }
 
-.nav-link:hover {
+.nav-link:hover, .nav-list li i:hover {
+    opacity: 1;
     color: #000000;
 }
 
+/* =========================================
+   ĐỒNG BỘ THANH TÌM KIẾM (SEARCH BAR)
+========================================= */
+.search-bar-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 44px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    display: flex; justify-content: center; align-items: center;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 10001;
+}
+
+.search-bar-container.active {
+    opacity: 1; visibility: visible;
+}
+
+.search-bar-container input {
+    width: 50%; background: transparent; border: none;
+    color: #1d1d1f; /* Chữ nhập vào màu đen */
+    font-size: 16px; outline: none; padding: 0 15px;
+}
+
+.search-bar-container input::placeholder {
+    color: #86868b; /* Chữ gợi ý màu xám */
+}
+
+.search-bar-container i {
+    color: #1d1d1f;
+    font-size: 18px; cursor: pointer; transition: 0.3s;
+}
+
+.search-bar-container i:hover { color: #0071e3; }
+
+
+/* =========================================
+   MEGA MENU XỔ XUỐNG
+========================================= */
 .dropdown-mega-menu {
     position: absolute;
     top: 44px;
     left: 0;
     width: 100%;
-    background-color: #ffffff;
+    background-color: #ffffff; /* Nền trắng */
     color: #1d1d1f;
     max-height: 0;
     overflow: hidden;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 9999;
 }
 
 .dropdown-mega-menu.show {
     max-height: 400px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05); /* Đổ bóng nhẹ khi hiện */
 }
 
 .dropdown-content {
@@ -72,12 +132,15 @@
 
 .sub-category-list {
     list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .sub-category-title {
     color: #86868b;
     font-size: 12px;
     margin-bottom: 10px;
+    text-transform: uppercase;
 }
 
 .sub-category-item {
@@ -86,12 +149,17 @@
     margin-bottom: 8px;
     color: #1d1d1f;
     cursor: pointer;
+    transition: color 0.2s;
 }
 
 .sub-category-item:hover {
     color: #0071e3;
 }
 
+
+/* =========================================
+   LỚP PHỦ MỜ KHI MỞ MENU TÌM KIẾM
+========================================= */
 .page-overlay {
     position: fixed;
     top: 44px;
@@ -110,4 +178,58 @@
 .page-overlay.show {
     opacity: 1;
     visibility: visible;
+}
+
+/* =========================================
+   FIX TRIỆT ĐỂ LỖI MẤT ICON BẰNG FONTAWESOME (V2)
+========================================= */
+
+/* 1. TIÊU DIỆT TẬN GỐC: Ẩn mọi thẻ con (Ảnh, SVG, Icon cũ...) nằm trong 3 nút này */
+.nav-list li:first-child a > *,
+.nav-list li:nth-last-child(2) a > *,
+.nav-list li:last-child a > * {
+    display: none !important;
+}
+
+/* 2. Ép các nút này không được hiện chữ rác, chỉ dùng để chứa Icon */
+.nav-list li:first-child a,
+.nav-list li:nth-last-child(2) a,
+.nav-list li:last-child a {
+    font-size: 0 !important; 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 3. Vẽ lại Logo Apple (Nằm ở mục đầu tiên) */
+.nav-list li:first-child a::before {
+    font-family: "Font Awesome 6 Brands";
+    content: "\f179"; /* Mã Unicode của logo Apple */
+    font-size: 18px !important;
+    color: #1d1d1f;
+}
+
+/* 4. Vẽ lại Icon Tìm kiếm (Nằm ở mục kế cuối) */
+.nav-list li:nth-last-child(2) a::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f002"; /* Mã Unicode Kính lúp */
+    font-size: 16px !important;
+    color: #1d1d1f;
+}
+
+/* 5. Vẽ lại Icon Giỏ hàng (Nằm ở mục cuối cùng) */
+.nav-list li:last-child a::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f290"; /* Mã Unicode Túi mua sắm */
+    font-size: 16px !important;
+    color: #1d1d1f;
+}
+
+/* 6. Hiệu ứng Hover: Icon đậm lên khi trỏ chuột vào */
+.nav-list li:first-child a:hover::before,
+.nav-list li:nth-last-child(2) a:hover::before,
+.nav-list li:last-child a:hover::before {
+    color: #000000;
 }
