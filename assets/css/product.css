@@ -133,3 +133,48 @@ body {
     .popover-grid { grid-template-columns: 1fr; gap: 20px; }
     .popover-content { padding: 30px 20px; height: 90vh; overflow-y: auto; }
 }
+
+
+/* =========================================
+   KHỐI NỀN TRẮNG CẮT NGANG TRANG (FULL-WIDTH)
+========================================= */
+.white-block {
+    background-color: #ffffff;
+    width: 100%;
+    margin-top: 100px;
+    padding: 40px 20px; /* Tạo không gian thở rộng rãi trên/dưới */
+    box-sizing: border-box;
+}
+
+/* Ép lại màu chữ thành đen/xám khi nằm trong khối trắng */
+.white-block .split-text h2 {
+    color: #1d1d1f;
+}
+
+.white-block .split-text p {
+    color: #86868b;
+}
+
+/* Tùy chỉnh ánh sáng Ambilight trên nền trắng để không bị gắt */
+.white-block .ambilight-glow {
+    opacity: 0.4; /* Giảm độ đậm để tạo thành lớp bóng mờ sang trọng */
+    filter: blur(80px) saturate(150%);
+    -webkit-filter: blur(80px) saturate(150%);
+}
+
+/* =========================================
+   HIỆU ỨNG ANIMATION "NỔI LÊN" (POP-UP)
+========================================= */
+.pop-up {
+    opacity: 0;
+    /* Kéo tụt xuống 80px và thu nhỏ 2% */
+    transform: translateY(80px) scale(0.98);
+    /* Đường cong chuyển động chuẩn Apple: Lướt nhanh và phanh mượt */
+    transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pop-up.is-visible {
+    opacity: 1;
+    /* Trả về đúng vị trí và kích thước gốc */
+    transform: translateY(0) scale(1);
+}

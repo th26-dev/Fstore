@@ -2,8 +2,22 @@ import { db, auth } from '../models/firebaseConfig.js';
 import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
+// =========================================
+// HIỆU ỨNG DYNAMIC ISLAND HEADER
+// =========================================
+const header = document.querySelector('.liquid-header');
+
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 50) {
+        // Khi cuộn xuống quá 50px -> Biến thành viên thuốc
+        header.classList.add('scrolled');
+    } else {
+        // Khi trở về trên cùng -> Dãn ra tràn viền như cũ
+        header.classList.remove('scrolled');
+    }
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
-    const header = document.querySelector('.liquid-header');
     const mainNavList = document.getElementById('mainNavList');
     const megaMenu = document.getElementById('megaMenu');
     const dropdownContent = document.getElementById('dropdownContent');
@@ -106,3 +120,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error(error);
     }
 });
+
+
+// =========================================
+// XỬ LÝ CLICK DANH MỤC KHI ĐANG Ở TRANG KHÁC (V2 - CHỐNG TRƯỢT)
+// =========================================
+document.addEventListener('click', (e) => {
+    // Dùng closest() để đảm bảo dù click vào chữ hay viền thì vẫn bắt trúng khối danh mục
+    const categoryItem = e.target.closest('.sub-category-item');
+    
+    if (categoryItem) {
+        const categoryId = categoryItem.getAttribute('data-id');
+        const categoryName = categoryItem.innerText;
+
+        // Quét URL xem có đang ở trang chủ không (dùng includes cho chắc chắn)
+        const path = window.location.pathname.toLowerCase();
+        const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
+
+        if (!isHomePage) {
+            e.preventDefault(); // Ngăn chặn các hành vi nhảy trang lộn xộn
+            localStorage.setItem('pendingCategoryLoad', JSON.stringify({ id: categoryId, name: categoryName }));
+            window.location.href = 'index.html'; // Điều hướng về trang chủ
+        }
+    }
+});
+
+
+// =========================================
+// XỬ LÝ TÌM KIẾM KHI ĐANG Ở TRANG KHÁC (GIỎ HÀNG, PROFILE...)
+// =========================================
+const searchInputEl = document.getElementById('searchInput');
+if (searchInputEl) {
+    searchInputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const keyword = searchInputEl.value.trim();
+            if (!keyword) return;
+
+            // Kiểm tra xem có đang ở trang chủ không
+            const path = window.location.pathname.toLowerCase();
+            const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
+
+            // Nếu KHÔNG phải trang chủ -> Lưu từ khóa và chuyển hướng
+            if (!isHomePage) {
+                e.preventDefault();
+                localStorage.setItem('pendingSearchKeyword', keyword);
+                window.location.href = 'index.html';
+            }
+        }
+    });
+}

@@ -6,57 +6,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalPriceEl = document.getElementById('totalPrice');
     const checkoutBtn = document.getElementById('checkoutBtn');
     const checkoutMsg = document.getElementById('checkoutMsg');
+    
+    // Giao diện ẩn/hiện Apple Style
+    const emptyCartView = document.getElementById('emptyCartView');
+    const filledCartView = document.getElementById('filledCartView');
 
     let cartData = [];
     let userId = null;
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
+    // Kích hoạt khi kiểm tra Auth thành công
     onAuthStateChanged(auth, (user) => {
         if (!user) {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
             const savedCart = localStorage.getItem(`cart_${userId}`);
+            
             if (savedCart && JSON.parse(savedCart).length > 0) {
                 cartData = JSON.parse(savedCart);
-                renderCart();
+                renderCart(); // Có hàng -> Chạy hàm render
             } else {
-                cartItemsContainer.innerHTML = '<p style="text-align:center; padding:50px;">Giỏ hàng trống.</p>';
-                checkoutBtn.disabled = true;
+                // Giỏ hàng trống -> Hiện Empty View
+                emptyCartView.style.display = 'block';
+                filledCartView.style.display = 'none';
             }
         }
     });
 
     const renderCart = () => {
+        // Hiện giao diện có hàng
+        emptyCartView.style.display = 'none';
+        filledCartView.style.display = 'block';
+
         let html = '';
         let total = 0;
+        
         cartData.forEach((item, index) => {
             total += item.price;
             html += `
                 <div class="cart-item">
-                    <img src="${item.image}" alt="${item.name}">
-                    <div class="item-info">
-                        <h3>${item.name}</h3>
-                        <p>${item.color} | ${item.storage}</p>
-                        <button class="remove-item" data-index="${index}" style="color:#ff3b30; cursor:pointer; background:none; border:none; margin-top:10px;">Xóa</button>
+                    <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                    <div class="cart-item-details">
+                        <div class="cart-item-info">
+                            <h3>${item.name}</h3>
+                            <p>${item.color || ''} | ${item.storage || ''}</p>
+                        </div>
+                        <div class="cart-item-price-wrap">
+                            <div class="cart-item-price">${formatPrice(item.price)}</div>
+                            <button class="btn-remove remove-item" data-index="${index}">Xóa</button>
+                        </div>
                     </div>
-                    <div class="item-price">${formatPrice(item.price)}</div>
                 </div>`;
         });
+        
         cartItemsContainer.innerHTML = html;
         totalPriceEl.innerText = formatPrice(total);
 
+        // Lắng nghe sự kiện Xóa sản phẩm
         document.querySelectorAll('.remove-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = e.target.dataset.index;
                 cartData.splice(idx, 1);
                 localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
-                location.reload();
+                location.reload(); // Load lại trang để cập nhật logic
             });
         });
     };
 
+    // Logic thanh toán API (Giữ nguyên gốc)
     checkoutBtn.addEventListener('click', async () => {
         const totalAmount = Math.round(cartData.reduce((sum, item) => sum + item.price, 0));
         
@@ -81,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkoutMsg.style.display = "block";
             checkoutMsg.innerText = error.message;
             checkoutBtn.disabled = false;
-            checkoutBtn.innerText = "Tiến hành thanh toán";
+            checkoutBtn.innerText = "Thanh Toán";
         }
     });
 });

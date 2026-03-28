@@ -6,22 +6,41 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 44px; /* Độ cao chuẩn xác của thanh điều hướng Apple */
-    
-    /* Màu trắng với độ trong suốt 85% kết hợp Blur và Saturate */
+    height: 44px;
     background-color: rgba(255, 255, 255, 0.85); 
     backdrop-filter: saturate(180%) blur(20px); 
     -webkit-backdrop-filter: saturate(180%) blur(20px);
-    
-    /* Đường viền mỏng 1px ở đáy để phân cách nhẹ nhàng */
     border-bottom: 1px solid rgba(0, 0, 0, 0.05); 
     z-index: 10000;
-    transition: background-color 0.3s ease;
+    
+    /* Làm chậm hiệu ứng biến hình, tạo cảm giác lướt êm ái */
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
+}
+
+/* TRẠNG THÁI DYNAMIC ISLAND (VIÊN THUỐC) */
+.liquid-header.scrolled {
+    top: 15px; 
+    width: 80%; 
+    max-width: 900px;
+    left: 50%; 
+    transform: translateX(-50%); 
+    
+    border-radius: 50px; 
+    background-color: rgba(255, 255, 255, 0.75); 
+    box-shadow: 0 20px 40px rgba(0,0,0,0.12); 
+    border: 1px solid rgba(255, 255, 255, 0.5); 
+    border-bottom: none;
 }
 
 /* Khi mở menu, nền trở thành màu trắng đục */
 .liquid-header.menu-open {
     background-color: rgba(255, 255, 255, 1);
+}
+
+/* Hiệu ứng nối liền mạch với viên thuốc khi mở menu */
+.liquid-header.scrolled.menu-open {
+    border-radius: 24px 24px 0 0;
+    transition: border-radius 0.3s ease, background-color 0.4s ease;
 }
 
 .nav-container {
@@ -47,7 +66,7 @@
     font-weight: 400;
     letter-spacing: -0.01em;
     text-decoration: none;
-    opacity: 0.8; /* Mặc định hơi mờ nhẹ */
+    opacity: 0.8; 
     transition: opacity 0.3s ease, color 0.3s ease;
     cursor: pointer;
 }
@@ -68,8 +87,11 @@
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     display: flex; justify-content: center; align-items: center;
     opacity: 0; visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
     z-index: 10001;
+    
+    /* THÊM DÒNG NÀY ĐỂ BO TRÒN THANH TÌM KIẾM */
+    border-radius: 50px; 
 }
 
 .search-bar-container.active {
@@ -78,12 +100,12 @@
 
 .search-bar-container input {
     width: 50%; background: transparent; border: none;
-    color: #1d1d1f; /* Chữ nhập vào màu đen */
+    color: #1d1d1f; 
     font-size: 16px; outline: none; padding: 0 15px;
 }
 
 .search-bar-container input::placeholder {
-    color: #86868b; /* Chữ gợi ý màu xám */
+    color: #86868b; 
 }
 
 .search-bar-container i {
@@ -95,25 +117,31 @@
 
 
 /* =========================================
-   MEGA MENU XỔ XUỐNG
+   MEGA MENU XỔ XUỐNG (ĐÃ DỌN DẸP SẠCH SẼ LỖI)
 ========================================= */
 .dropdown-mega-menu {
     position: absolute;
-    top: 44px;
+    top: 100%; /* Sát mép dưới Header */
     left: 0;
-    width: 100%;
-    background-color: #ffffff; /* Nền trắng */
-    color: #1d1d1f;
-    max-height: 0;
+    width: 100%; /* Tràn viền khớp với Header */
+    background-color: rgba(255, 255, 255, 0.98); 
+    border-radius: 0 0 24px 24px;
+    
+    /* Xóa hẳn border mặc định để không bị lộ lằn ngang trên nền đen */
+    border-top: none;
+    border-bottom: none;
+    
+    max-height: 0; 
     overflow: hidden;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 9999;
 }
 
 .dropdown-mega-menu.show {
     max-height: 400px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.05); /* Đổ bóng nhẹ khi hiện */
+    /* Khi menu xổ xuống mới cho hiện đường kẻ mỏng phân cách */
+    border-top: 1px solid rgba(0, 0, 0, 0.05); 
+    box-shadow: 0 15px 30px rgba(0,0,0,0.1); 
 }
 
 .dropdown-content {
@@ -123,7 +151,7 @@
     display: flex;
     gap: 50px;
     opacity: 0;
-    transition: opacity 0.3s 0.1s ease;
+    transition: opacity 0.4s 0.2s ease;
 }
 
 .dropdown-mega-menu.show .dropdown-content {
@@ -162,17 +190,17 @@
 ========================================= */
 .page-overlay {
     position: fixed;
-    top: 44px;
+    top: 0; /* Ép sát lên đỉnh màn hình để không hở viền sáng */
     left: 0;
     width: 100%;
-    height: calc(100vh - 44px);
+    height: 100vh; /* Cao đúng 100% màn hình */
     background-color: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     z-index: 9998;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 .page-overlay.show {
@@ -184,7 +212,7 @@
    FIX TRIỆT ĐỂ LỖI MẤT ICON BẰNG FONTAWESOME (V2)
 ========================================= */
 
-/* 1. TIÊU DIỆT TẬN GỐC: Ẩn mọi thẻ con (Ảnh, SVG, Icon cũ...) nằm trong 3 nút này */
+/* 1. Ẩn mọi thẻ con (Ảnh, SVG, Icon cũ...) nằm trong 3 nút này */
 .nav-list li:first-child a > *,
 .nav-list li:nth-last-child(2) a > *,
 .nav-list li:last-child a > * {
@@ -201,30 +229,33 @@
     justify-content: center;
 }
 
-/* 3. Vẽ lại Logo Apple (Nằm ở mục đầu tiên) */
+/* 3. Vẽ lại Logo Apple */
 .nav-list li:first-child a::before {
     font-family: "Font Awesome 6 Brands";
-    content: "\f179"; /* Mã Unicode của logo Apple */
+    content: "\f179"; 
     font-size: 18px !important;
     color: #1d1d1f;
+    transition: color 0.3s ease;
 }
 
-/* 4. Vẽ lại Icon Tìm kiếm (Nằm ở mục kế cuối) */
+/* 4. Vẽ lại Icon Tìm kiếm */
 .nav-list li:nth-last-child(2) a::before {
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
-    content: "\f002"; /* Mã Unicode Kính lúp */
+    content: "\f002"; 
     font-size: 16px !important;
     color: #1d1d1f;
+    transition: color 0.3s ease;
 }
 
-/* 5. Vẽ lại Icon Giỏ hàng (Nằm ở mục cuối cùng) */
+/* 5. Vẽ lại Icon Giỏ hàng */
 .nav-list li:last-child a::before {
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
-    content: "\f290"; /* Mã Unicode Túi mua sắm */
+    content: "\f290"; 
     font-size: 16px !important;
     color: #1d1d1f;
+    transition: color 0.3s ease;
 }
 
 /* 6. Hiệu ứng Hover: Icon đậm lên khi trỏ chuột vào */

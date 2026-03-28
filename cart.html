@@ -10,42 +10,59 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <header class="liquid-header menu-open">
+    <header class="liquid-header">
         <nav class="nav-container">
-            <ul class="nav-list">
-                <li class="nav-item"><a href="index.html" class="nav-link"><i class="fa-solid fa-store" style="font-size: 1.2rem;"></i></a></li>
-                <li class="nav-item"><a href="#" class="nav-link">Giỏ hàng của bạn</a></li>
-            </ul>
+            <ul class="nav-list" id="mainNavList"></ul>
         </nav>
+
+        <div class="search-bar-container" id="searchBarContainer">
+            <i class="fa-solid fa-magnifying-glass search-icon-input"></i>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm... (Nhấn Enter để tìm)">
+            <i class="fa-solid fa-xmark close-search" id="closeSearchBtn"></i>
+        </div>
+
+        <div class="dropdown-mega-menu" id="megaMenu">
+            <div class="dropdown-content" id="dropdownContent"></div>
+        </div>
     </header>
 
+    <div id="pageOverlay" class="page-overlay"></div>
+
     <main class="cart-container">
-        <h1>Thanh toán đơn hàng</h1>
-        <div class="cart-grid">
-            <div class="cart-items" id="cartItems"></div>
-            
-            <div class="checkout-box">
-                <h3>Tổng cộng</h3>
-                <p class="total-price" id="totalPrice">0 đ</p>
+        <p class="cart-notice text-center">Xin lưu ý rằng chúng tôi không chấp nhận đổi trả đối với các đơn hàng trực tuyến.</p>
+
+        <div id="emptyCartView" class="empty-cart-view text-center" style="display: none;">
+            <h1 class="apple-title">Giỏ hàng của bạn đang trống.</h1>
+            <p class="apple-subtitle">Hưởng miễn phí vận chuyển cho mọi đơn hàng.</p>
+            <a href="index.html" class="btn-outline">Tiếp Tục Mua Sắm</a>
+        </div>
+
+        <div id="filledCartView" class="filled-cart-view" style="display: none;">
+            <div class="cart-header text-center">
+                <h1 class="apple-title">Tổng giá trị giỏ hàng của bạn là <span id="totalPrice">0 đ</span>.</h1>
+                <p class="apple-subtitle">Vận chuyển miễn phí đối với mọi đơn hàng.</p>
                 
-                <div class="payment-methods">
-                    <h4>Chọn phương thức thanh toán:</h4>
+                <button class="btn-primary" id="checkoutBtn">Thanh Toán</button>
+                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
+
+                <div class="payment-methods-apple">
                     <label class="payment-label">
                         <input type="radio" name="payment" value="momo" checked>
-                        <span>Ví MoMo (Sandbox)</span>
+                        <span>Ví MoMo</span>
                     </label>
                     <label class="payment-label">
                         <input type="radio" name="payment" value="vnpay">
-                        <span>VNPay (Sandbox)</span>
+                        <span>VNPay</span>
                     </label>
                 </div>
-
-                <button class="btn-checkout" id="checkoutBtn">Tiến hành thanh toán</button>
-                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
             </div>
+
+            <div class="cart-items-list" id="cartItems">
+                </div>
         </div>
     </main>
 
+    <script type="module" src="./controllers/headerController.js"></script>
     <script type="module" src="./controllers/cartController.js"></script>
 </body>
 </html>
