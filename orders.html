@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử đơn hàng - FStore</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/header.css">
+    <link rel="stylesheet" href="./assets/css/orders.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body style="background-color: #f5f5f7;"> <header class="liquid-header scrolled">
+        <nav class="nav-container">
+            <ul class="nav-list" id="mainNavList"></ul>
+        </nav>
+        <div class="search-bar-container" id="searchBarContainer">
+            <i class="fa-solid fa-magnifying-glass search-icon-input"></i>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm...">
+            <i class="fa-solid fa-xmark close-search" id="closeSearchBtn"></i>
+        </div>
+        <div class="dropdown-mega-menu" id="megaMenu">
+            <div class="dropdown-content" id="dropdownContent"></div>
+        </div>
+    </header>
+
+    <div id="pageOverlay" class="page-overlay"></div>
+
+    <main class="orders-main-container">
+        <h1 class="orders-page-title">Đơn hàng của bạn</h1>
+        <p class="orders-page-subtitle">Xem lại lịch sử mua sắm và theo dõi tiến trình giao hàng.</p>
+
+        <div id="ordersListContainer" class="orders-list">
+            <div style="text-align: center; padding: 50px; color: #86868b;">Đang tải dữ liệu đơn hàng...</div>
+        </div>
+    </main>
+
+    <div id="toastNotification" class="toast-notification">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script type="module" src="./controllers/headerController.js"></script>
+    <script type="module" src="./controllers/ordersController.js"></script>
+    <div id="footer-placeholder"></div>
+
+    <script src="./controllers/loadComponents.js"></script>
+</body>
+</html>

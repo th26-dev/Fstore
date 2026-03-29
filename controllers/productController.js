@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageOverlay = document.getElementById('pageOverlay');
     const megaMenu = document.getElementById('megaMenu');
     
-    // Các phần tử Landing Page và Main Content mới
     const landingPage = document.getElementById('landingPage');
     const mainContent = document.getElementById('mainContent');
     
@@ -28,7 +27,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentImageIndex = 0; 
     let slideInterval; 
 
-    // === CÀI ĐẶT HIỆU ỨNG CUỘN (SCROLL ANIMATION) ===
+    const ambilightWrappers = document.querySelectorAll('.ambilight-wrapper');
+    ambilightWrappers.forEach(wrapper => {
+        const glowVideo = wrapper.querySelector('.ambilight-glow');
+        const mainVideo = wrapper.querySelector('.landing-media');
+
+        if (glowVideo && mainVideo) {
+            mainVideo.addEventListener('playing', () => {
+                glowVideo.currentTime = mainVideo.currentTime;
+                glowVideo.play().catch(e => console.log("Glow video play blocked:", e));
+            });
+
+            mainVideo.addEventListener('pause', () => glowVideo.pause());
+            mainVideo.addEventListener('waiting', () => glowVideo.pause());
+
+            setInterval(() => {
+                if (!mainVideo.paused && Math.abs(glowVideo.currentTime - mainVideo.currentTime) > 0.3) {
+                    glowVideo.currentTime = mainVideo.currentTime;
+                }
+            }, 2000); 
+        }
+    });
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -44,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderProducts = (products, title) => {
-        // Chuyển đổi giao diện: Ẩn quảng cáo, hiện sản phẩm
         if (landingPage) landingPage.style.display = 'none';
         if (mainContent) mainContent.style.display = 'block';
 
@@ -72,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
         productGrid.innerHTML = html;
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Tự động cuộn lên khi load xong danh mục
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
     };
 
     const updatePopoverVariantUI = () => {
@@ -150,14 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.addEventListener('click', async (e) => {
-        // Menu Danh Mục
         if (e.target.classList.contains('sub-category-item')) {
             const categoryId = e.target.getAttribute('data-id');
             const categoryName = e.target.innerText;
 
-            megaMenu.classList.remove('show');
-            pageOverlay.classList.remove('show');
-            document.querySelector('.liquid-header').classList.remove('menu-open');
+            if(megaMenu) megaMenu.classList.remove('show');
+            if(pageOverlay) pageOverlay.classList.remove('show');
+            const header = document.querySelector('.liquid-header');
+            if(header) header.classList.remove('menu-open');
 
             const q = query(collection(db, "products"), where("categoryId", "==", categoryId));
             const snapshot = await getDocs(q);
@@ -167,17 +186,14 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProducts(products, categoryName);
         }
 
-        // Fix lỗi click thẻ sản phẩm
         const productCard = e.target.closest('.product-card');
         if (productCard) {
             if (e.target.closest('a')) e.preventDefault();
-            
             const productId = productCard.getAttribute('data-id');
             openPopover(productId);
             return;
         }
 
-        // Đổi Biến Thể
         if (e.target.classList.contains('variant-btn')) {
             e.preventDefault();
             document.querySelectorAll('.variant-btn').forEach(btn => btn.classList.remove('active'));
@@ -189,14 +205,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updatePopoverVariantUI();
         }
 
-        // Bấm Nút Dot
         if (e.target.classList.contains('dot')) {
             e.preventDefault();
             currentImageIndex = parseInt(e.target.getAttribute('data-index'));
             updatePopoverVariantUI(); 
         }
 
-        // Bấm trực tiếp vào Ảnh
         if (e.target.id === 'popoverImg') {
             e.preventDefault();
             const imageList = selectedVariant.images || [selectedVariant.image || ""];
@@ -236,49 +250,135 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCart.push(productToSave);
             localStorage.setItem(cartKey, JSON.stringify(currentCart));
 
-            alert(`Đã thêm ${currentProduct.name} vào giỏ hàng!`);
+            window.dispatchEvent(new Event('cartUpdated'));
+
+            const cartIcon = document.getElementById('cartBtn'); 
+            const sourceImage = document.getElementById('popoverImg'); 
+
+            if (cartIcon && sourceImage) {
+                const imgRect = sourceImage.getBoundingClientRect();
+                const cartRect = cartIcon.getBoundingClientRect();
+
+                const flyingImg = sourceImage.cloneNode();
+                flyingImg.classList.add('flying-img');
+                
+                flyingImg.style.left = `${imgRect.left}px`;
+                flyingImg.style.top = `${imgRect.top}px`;
+                flyingImg.style.width = `${imgRect.width}px`;
+                flyingImg.style.height = `${imgRect.height}px`;
+                
+                document.body.appendChild(flyingImg);
+                flyingImg.offsetWidth; 
+
+                flyingImg.style.left = `${cartRect.left + cartRect.width / 2 - 10}px`;
+                flyingImg.style.top = `${cartRect.top + cartRect.height / 2 - 10}px`;
+                flyingImg.style.width = '20px';
+                flyingImg.style.height = '20px';
+                flyingImg.style.opacity = '0.2'; 
+
+                setTimeout(() => {
+                    flyingImg.remove();
+                    cartIcon.classList.add('cart-bounce');
+                    setTimeout(() => cartIcon.classList.remove('cart-bounce'), 400); 
+                }, 800);
+            }
+
+            const toast = document.getElementById('toastNotification');
+            const toastMsg = document.getElementById('toastMessage');
+            
+            if (toast && toastMsg) {
+                toastMsg.innerText = `Đã thêm ${currentProduct.name} vào giỏ hàng!`;
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
             clearInterval(slideInterval); 
             productPopover.classList.remove('active');
         });
     }
-
-    // =========================================
-    // THUẬT TOÁN TÌM KIẾM THÔNG MINH (FUZZY SEARCH + XÓA DẤU TIẾNG VIỆT)
-    // =========================================
+    const saveItemBtn = document.getElementById('saveItemBtn');
     
-    // 1. Hàm hỗ trợ: Chuyển Tiếng Việt có dấu thành không dấu
-    const removeAccents = (str) => {
-        return str.normalize('NFD')
-                  .replace(/[\u0300-\u036f]/g, '')
-                  .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    const checkSavedStatus = () => {
+        if (!saveItemBtn || !auth.currentUser || !currentProduct) return;
+        const savedKey = `saved_${auth.currentUser.uid}`;
+        const savedItems = JSON.parse(localStorage.getItem(savedKey)) || [];
+        const isSaved = savedItems.some(item => item.id === currentProduct.id);
+        
+        if (isSaved) {
+            saveItemBtn.innerHTML = '<i class="fa-solid fa-heart" style="color: #ff3b30;"></i>';
+            saveItemBtn.style.borderColor = '#ff3b30';
+        } else {
+            saveItemBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
+            saveItemBtn.style.borderColor = '#d2d2d7';
+        }
     };
 
-    // 2. Hàm hỗ trợ: Tìm kiếm mờ (Cho phép gõ tắt, gõ ngắt quãng ví dụ "ac" vẫn tìm ra "abc")
-    const fuzzyMatch = (pattern, str) => {
-        let patternIdx = 0;
-        let strIdx = 0;
-        while (patternIdx < pattern.length && strIdx < str.length) {
-            if (pattern[patternIdx] === str[strIdx]) {
-                patternIdx++;
+    if (saveItemBtn) {
+        saveItemBtn.addEventListener('click', () => {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                window.location.href = 'auth.html';
+                return;
             }
+
+            const savedKey = `saved_${currentUser.uid}`;
+            let savedItems = JSON.parse(localStorage.getItem(savedKey)) || [];
+            const itemIndex = savedItems.findIndex(item => item.id === currentProduct.id);
+            
+            const toast = document.getElementById('toastNotification');
+            const toastMsg = document.getElementById('toastMessage');
+
+            if (itemIndex > -1) {
+                savedItems.splice(itemIndex, 1);
+                saveItemBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
+                saveItemBtn.style.borderColor = '#d2d2d7';
+                if(toastMsg) toastMsg.innerText = `Đã bỏ lưu ${currentProduct.name}!`;
+            } else {
+                savedItems.push({
+                    id: currentProduct.id,
+                    name: currentProduct.name,
+                    price: selectedVariant.price,
+                    image: selectedVariant.images ? selectedVariant.images[0] : selectedVariant.image
+                });
+                saveItemBtn.innerHTML = '<i class="fa-solid fa-heart" style="color: #ff3b30;"></i>';
+                saveItemBtn.style.borderColor = '#ff3b30';
+                if(toastMsg) toastMsg.innerText = `Đã lưu ${currentProduct.name} vào danh sách!`;
+            }
+            
+            localStorage.setItem(savedKey, JSON.stringify(savedItems));
+
+            if (toast) {
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+        });
+    }
+    const removeAccents = (str) => {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    };
+
+    const fuzzyMatch = (pattern, str) => {
+        let patternIdx = 0; let strIdx = 0;
+        while (patternIdx < pattern.length && strIdx < str.length) {
+            if (pattern[patternIdx] === str[strIdx]) { patternIdx++; }
             strIdx++;
         }
         return patternIdx === pattern.length;
     };
 
-    // 3. Xử lý sự kiện khi gõ tìm kiếm
     if (searchInput) {
         searchInput.addEventListener('keypress', async (e) => {
             if (e.key === 'Enter') {
                 const rawKeyword = searchInput.value.trim();
                 if (!rawKeyword) return;
 
-                // Tắt các giao diện khác để nhường chỗ cho kết quả tìm kiếm
-                searchBarContainer.classList.remove('active');
-                pageOverlay.classList.remove('show');
+                if (searchBarContainer) searchBarContainer.classList.remove('active');
+                if (pageOverlay) pageOverlay.classList.remove('show');
                 searchInput.value = '';
 
-                // Chuẩn hóa từ khóa: Viết thường, bỏ dấu tiếng Việt
                 const searchKeyword = removeAccents(rawKeyword.toLowerCase());
 
                 try {
@@ -287,15 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        // Chuẩn hóa tên sản phẩm trong Database: Viết thường, bỏ dấu
                         const normalizedProductName = removeAccents(data.name.toLowerCase());
-                        
-                        // Đưa vào thuật toán Fuzzy Match so khớp
                         if (fuzzyMatch(searchKeyword, normalizedProductName)) {
                             products.push(data);
                         }
                     });
-
                     renderProducts(products, `Kết quả tìm kiếm cho: "${rawKeyword}"`);
                 } catch (error) {
                     console.error("Lỗi khi tìm kiếm:", error);
@@ -304,14 +400,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // =========================================
-    // TỰ ĐỘNG LOAD DANH MỤC HOẶC TÌM KIẾM TỪ TRANG KHÁC (V3 - TỔNG HỢP)
-    // =========================================
     setTimeout(async () => {
         const pendingCategory = localStorage.getItem('pendingCategoryLoad');
         const pendingSearch = localStorage.getItem('pendingSearchKeyword');
         
-        // 1. NẾU CÓ YÊU CẦU LOAD DANH MỤC
         if (pendingCategory) {
             try {
                 const { id, name } = JSON.parse(pendingCategory);
@@ -332,17 +424,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Lỗi tự động load danh mục:", error);
             }
         } 
-        // 2. NẾU CÓ YÊU CẦU LOAD TÌM KIẾM
         else if (pendingSearch) {
             try {
                 localStorage.removeItem('pendingSearchKeyword'); 
 
-                // Tắt các giao diện tìm kiếm đang vướng
                 if (searchBarContainer) searchBarContainer.classList.remove('active');
                 if (pageOverlay) pageOverlay.classList.remove('show');
                 if (searchInput) searchInput.value = '';
 
-                // Thuật toán Fuzzy Search (Chạy lại logic tìm kiếm mờ)
                 const searchKeyword = removeAccents(pendingSearch.toLowerCase());
                 const snapshot = await getDocs(collection(db, "products"));
                 const products = [];
@@ -350,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const normalizedProductName = removeAccents(data.name.toLowerCase());
-                    
                     if (fuzzyMatch(searchKeyword, normalizedProductName)) {
                         products.push(data);
                     }
@@ -361,6 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Lỗi tự động load tìm kiếm:", error);
             }
         }
-    }, 300); // Vẫn giữ độ trễ 0.3s để chống lỗi tải trang
+    }, 300);
 
-}); // Kết thúc khối DOMContentLoaded ở đây!
+});

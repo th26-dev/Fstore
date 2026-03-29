@@ -1,0 +1,135 @@
+
+body {
+    background-color: #f5f5f7;
+    color: #1d1d1f;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased; /* Giúp chữ sắc nét và mượt hơn trên màn hình */
+}
+
+.orders-main-container {
+    max-width: 900px;
+    margin: 120px auto 60px;
+    padding: 0 20px;
+}
+.orders-main-container {
+    max-width: 900px;
+    margin: 120px auto 60px;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.orders-page-title {
+    font-size: 40px;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.orders-page-subtitle {
+    font-size: 18px;
+    color: #86868b;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.order-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    border: 1px solid #d2d2d7;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f5f5f7;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+}
+
+.order-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    color: #1d1d1f;
+}
+
+.order-info p {
+    margin: 0;
+    font-size: 14px;
+    color: #86868b;
+}
+
+.order-status {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.status-pending { background: #fff8e1; color: #f59e0b; } 
+.status-shipping { background: #e1f0ff; color: #0071e3; } 
+.status-completed { background: #e1ffe8; color: #34c759; } 
+.status-cancelled { background: #ffe1e1; color: #ff3b30; } 
+
+.order-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.order-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: #fbfbfd;
+    padding: 5px;
+}
+
+.item-details { flex: 1; }
+.item-details h4 { margin: 0 0 4px 0; font-size: 15px; color: #1d1d1f; }
+.item-details p { margin: 0; font-size: 13px; color: #86868b; }
+
+.item-price { font-weight: 600; color: #1d1d1f; font-size: 15px; }
+
+.order-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f5f5f7;
+}
+
+.order-total-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1d1d1f;
+}
+
+.empty-orders {
+    text-align: center;
+    padding: 60px 20px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+}
+.empty-orders i { font-size: 50px; color: #d2d2d7; margin-bottom: 15px; }
+.empty-orders h3 { margin: 0 0 10px 0; color: #1d1d1f; }
+.empty-orders a { color: #0071e3; text-decoration: none; font-weight: 600; }

@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkoutBtn = document.getElementById('checkoutBtn');
     const checkoutMsg = document.getElementById('checkoutMsg');
     
-    // Giao diện ẩn/hiện Apple Style
     const emptyCartView = document.getElementById('emptyCartView');
     const filledCartView = document.getElementById('filledCartView');
 
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
-    // Kích hoạt khi kiểm tra Auth thành công
     onAuthStateChanged(auth, (user) => {
         if (!user) {
             window.location.href = 'auth.html';
@@ -26,9 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (savedCart && JSON.parse(savedCart).length > 0) {
                 cartData = JSON.parse(savedCart);
-                renderCart(); // Có hàng -> Chạy hàm render
+                renderCart(); 
             } else {
-                // Giỏ hàng trống -> Hiện Empty View
                 emptyCartView.style.display = 'block';
                 filledCartView.style.display = 'none';
             }
@@ -36,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const renderCart = () => {
-        // Hiện giao diện có hàng
         emptyCartView.style.display = 'none';
         filledCartView.style.display = 'block';
 
@@ -44,19 +40,33 @@ document.addEventListener('DOMContentLoaded', () => {
         let total = 0;
         
         cartData.forEach((item, index) => {
-            total += item.price;
+            if (!item.quantity) item.quantity = 1;
+            
+            const itemTotalPrice = item.price * item.quantity;
+            total += itemTotalPrice;
+
             html += `
-                <div class="cart-item">
-                    <img src="${item.image}" alt="${item.name}" class="cart-item-img">
-                    <div class="cart-item-details">
+                <div class="cart-item" style="display: flex; border-bottom: 1px solid #d2d2d7; padding: 30px 0;">
+                    <img src="${item.image}" alt="${item.name}" class="cart-item-img" style="width: 120px; height: 120px; object-fit: contain; margin-right: 30px;">
+                    <div class="cart-item-details" style="flex: 1; display: flex; justify-content: space-between;">
+                        
                         <div class="cart-item-info">
-                            <h3>${item.name}</h3>
-                            <p>${item.color || ''} | ${item.storage || ''}</p>
+                            <h3 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #1d1d1f;">${item.name}</h3>
+                            <p style="margin: 0; color: #86868b; font-size: 15px;">${item.color || ''} | ${item.storage || ''}</p>
                         </div>
-                        <div class="cart-item-price-wrap">
-                            <div class="cart-item-price">${formatPrice(item.price)}</div>
-                            <button class="btn-remove remove-item" data-index="${index}">Xóa</button>
+                        
+                        <div class="cart-item-actions" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                            <div style="font-size: 22px; font-weight: 600; color: #1d1d1f; margin-bottom: 15px;">${formatPrice(item.price)}</div>
+                            
+                            <div class="qty-select-wrapper">
+                                <select class="qty-select" data-index="${index}">
+                                    ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option value="${n}" ${item.quantity === n ? 'selected' : ''}>${n}</option>`).join('')}
+                                </select>
+                            </div>
+
+                            <button class="btn-remove remove-item" data-index="${index}" style="background: none; border: none; color: #0071e3; cursor: pointer; font-size: 15px; padding: 0; margin-top: 10px;">Xóa</button>
                         </div>
+
                     </div>
                 </div>`;
         });
@@ -64,20 +74,40 @@ document.addEventListener('DOMContentLoaded', () => {
         cartItemsContainer.innerHTML = html;
         totalPriceEl.innerText = formatPrice(total);
 
-        // Lắng nghe sự kiện Xóa sản phẩm
+        document.querySelectorAll('.qty-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const idx = e.target.dataset.index;
+                const newQty = parseInt(e.target.value);
+                
+                cartData[idx].quantity = newQty; 
+                localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData)); 
+                
+                window.dispatchEvent(new Event('cartUpdated')); 
+                
+                renderCart(); 
+            });
+        });
+
         document.querySelectorAll('.remove-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = e.target.dataset.index;
                 cartData.splice(idx, 1);
                 localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
-                location.reload(); // Load lại trang để cập nhật logic
+                
+                window.dispatchEvent(new Event('cartUpdated')); 
+                
+                if (cartData.length === 0) {
+                    emptyCartView.style.display = 'block';
+                    filledCartView.style.display = 'none';
+                } else {
+                    renderCart();
+                }
             });
         });
     };
 
-    // Logic thanh toán API (Giữ nguyên gốc)
     checkoutBtn.addEventListener('click', async () => {
-        const totalAmount = Math.round(cartData.reduce((sum, item) => sum + item.price, 0));
+        const totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
         
         checkoutBtn.innerText = "Đang tạo mã QR MoMo...";
         checkoutBtn.disabled = true;

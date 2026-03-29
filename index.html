@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FStore - Cửa Hàng Điện Tử</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">    <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="./assets/css/header.css">
     <link rel="stylesheet" href="./assets/css/home.css">
     <link rel="stylesheet" href="./assets/css/product.css">
@@ -47,19 +47,52 @@
 
         <section class="landing-section white-block scroll-anim pop-up">
             <div class="split-container">
-                
                 <div class="split-text">
                     <h2>Thiết kế titan.</h2>
                     <p>Mạnh mẽ hơn. Nhẹ nhàng hơn. Đẳng cấp hơn bao giờ hết. Khung viền titan mới mang lại độ bền vượt trội và cảm giác cầm nắm hoàn hảo, giúp bạn tự tin tỏa sáng mọi lúc mọi nơi.</p>
                 </div>
-
                 <div class="split-media">
                     <div class="ambilight-wrapper">
                         <video autoplay muted loop playsinline class="ambilight-glow">
                             <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
                         </video>
                         <video autoplay muted loop playsinline class="landing-media">
-                            <source src="./assets/media//galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                            <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-section scroll-anim slide-up" style="padding-top: 100px;">
+            <h1 class="landing-title" style="background: linear-gradient(90deg, #e3c099, #c0b2a2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">iPhone 17 Pro</h1>
+            <p class="landing-subtitle">Đỉnh cao thiết kế. Kỷ nguyên mới của Apple Intelligence.</p>
+            
+            <div class="ambilight-wrapper">
+                <video autoplay muted loop playsinline class="ambilight-glow">
+                    <source src="./assets/media/freecompress-Introducing iPhone 17 Pro and iPhone 17 Pro Max.mp4" type="video/mp4">
+                </video>
+                <video autoplay muted loop playsinline class="landing-media">
+                    <source src="./assets/media/freecompress-Introducing iPhone 17 Pro and iPhone 17 Pro Max.mp4" type="video/mp4">
+                </video>
+            </div>
+        </section>
+
+        <section class="landing-section white-block scroll-anim pop-up">
+            <div class="split-container" style="flex-direction: row-reverse;">
+                
+                <div class="split-text">
+                    <h2>Camera Control.</h2>
+                    <p>Hoàn toàn kiểm soát. Không bỏ lỡ khoảnh khắc nào. Chạm, trượt và tinh chỉnh mọi thông số nhiếp ảnh chuyên nghiệp một cách mượt mà chỉ bằng một ngón tay.</p>
+                </div>
+
+                <div class="split-media">
+                    <div class="ambilight-wrapper">
+                        <video autoplay muted loop playsinline class="ambilight-glow">
+                            <source src="./assets/media/freecompress-Introducing iPhone 17.mp4" type="video/mp4">
+                        </video>
+                        <video autoplay muted loop playsinline class="landing-media">
+                            <source src="./assets/media/freecompress-Introducing iPhone 17.mp4" type="video/mp4">
                         </video>
                     </div>
                 </div>
@@ -90,13 +123,26 @@
                     <div class="popover-specs" id="popoverSpecs"></div>
                     <h3 class="popover-price" id="popoverPrice"></h3>
                     <div class="popover-variants" id="popoverVariants"></div>
-                    <button class="btn-add-cart" id="addToCartBtn">Thêm vào giỏ hàng</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-add-cart" id="addToCartBtn" style="flex: 1;">Thêm vào giỏ hàng</button>
+                        <button class="btn-save-item" id="saveItemBtn" style="width: 54px; border-radius: 12px; border: 1px solid #d2d2d7; background: #fff; cursor: pointer; font-size: 20px; color: #1d1d1f; transition: 0.3s;" title="Lưu sản phẩm này">
+                            <i class="fa-regular fa-heart"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <div id="toastNotification" class="toast-notification">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toastMessage">Đã thêm vào giỏ hàng!</span>
+    </div>
 
     <script type="module" src="./controllers/headerController.js"></script>
     <script type="module" src="./controllers/productController.js"></script>
+    <div id="footer-placeholder"></div>
+
+    <script src="./controllers/loadComponents.js"></script>
 </body>
 </html>

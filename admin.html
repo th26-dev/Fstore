@@ -4,25 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - FStore</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">
     <link rel="stylesheet" href="./assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* CSS tích hợp cho Modal (Bảng nổi) */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: #fff; margin: 5% auto; padding: 25px; border-radius: 12px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; }
-        .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .close-modal:hover { color: #ff3b30; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
-        .variant-box { background: #f5f5f7; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .variant-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-        .variant-row input { flex: 1; min-width: 120px; }
-        .btn-action { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; }
-        .btn-save { background: #0071e3; }
-        .btn-add-var { background: #34c759; margin-bottom: 10px; }
-        .btn-del { background: #ff3b30; padding: 8px 12px; }
-    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="admin-layout">
@@ -47,11 +33,37 @@
             </header>
 
             <div id="tab-dashboard" class="tab-content active">
+                
+                <div class="filter-section">
+                    <label for="timeFilter" style="font-weight: bold; color: #1d1d1f;">
+                        <i class="fa-regular fa-calendar-days"></i> Thống kê theo:
+                    </label>
+                    <select id="timeFilter">
+                        <option value="today">Hôm nay</option>
+                        <option value="week">Tuần này</option>
+                        <option value="month" selected>Tháng này</option>
+                        <option value="year">Năm nay</option>
+                        <option value="all">Tất cả thời gian</option>
+                    </select>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card"><h3>Tổng doanh thu</h3><p id="statRevenue">0 đ</p></div>
                     <div class="stat-card"><h3>Đơn hàng</h3><p id="statOrders">0</p></div>
                     <div class="stat-card"><h3>Sản phẩm</h3><p id="statProducts">0</p></div>
                 </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Biểu đồ Doanh thu</h3>
+                        <canvas id="revenueBarChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #1d1d1f; font-size: 18px;">Tỷ trọng Doanh thu</h3>
+                        <canvas id="orderPieChart"></canvas>
+                    </div>
+                </div>
+
             </div>
 
             <div id="tab-categories" class="tab-content">
@@ -68,7 +80,14 @@
             <div id="tab-products" class="tab-content">
                 <div class="flex-between" style="margin-bottom: 20px;">
                     <h3>Quản lý sản phẩm</h3>
-                    <button class="btn-action btn-save" id="btnAddProduct">Thêm sản phẩm</button>
+                    
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <select id="filterProductCategory" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
+                            <option value="all">Tất cả danh mục</option>
+                            </select>
+                        <button class="btn-action btn-save" id="btnAddProduct">Thêm sản phẩm</button>
+                    </div>
+
                 </div>
                 <table class="data-table">
                     <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá (Từ)</th><th>Thao tác</th></tr></thead>
