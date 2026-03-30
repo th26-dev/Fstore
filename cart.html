@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FStore - Giỏ hàng</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="./assets/css/header.css">
     <link rel="stylesheet" href="./assets/css/cart.css">
@@ -43,8 +47,13 @@
                 <h1 class="apple-title">Tổng giá trị giỏ hàng của bạn là <span id="totalPrice">0 đ</span>.</h1>
                 <p class="apple-subtitle">Vận chuyển miễn phí đối với mọi đơn hàng.</p>
                 
-                <button class="btn-primary" id="checkoutBtn">Thanh Toán</button>
-                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
+                <div class="delivery-address-section">
+                    <h3><i class="fa-solid fa-location-dot"></i> Địa chỉ giao hàng</h3>
+                    <div class="address-box">
+                        <p id="currentAddressText">Bạn chưa chọn địa chỉ giao hàng.</p>
+                        <button id="btnOpenMap" class="btn-change-address">Chọn trên bản đồ</button>
+                    </div>
+                </div>
 
                 <div class="payment-methods-apple">
                     <label class="payment-label">
@@ -56,6 +65,9 @@
                         <span>VNPay</span>
                     </label>
                 </div>
+
+                <button class="btn-primary" id="checkoutBtn">Thanh Toán</button>
+                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
             </div>
 
             <div class="cart-items-list" id="cartItems">
@@ -63,10 +75,26 @@
         </div>
     </main>
 
+    <div id="mapModal" class="map-modal-overlay">
+        <div class="map-modal-content">
+            <div class="map-modal-header">
+                <h3>Ghim vị trí nhận hàng</h3>
+                <i class="fa-solid fa-xmark" id="closeMapModal"></i>
+            </div>
+            <p style="font-size: 13px; color: #86868b; margin-bottom: 10px;">Di chuyển bản đồ hoặc click để chọn vị trí. Hệ thống sẽ tự động nhận diện địa chỉ.</p>
+            
+            <div id="deliveryMap" style="height: 350px; width: 100%; border-radius: 12px; margin-bottom: 15px; z-index: 1;"></div>
+            
+            <div class="input-group">
+                <input type="text" id="detailAddressInput" placeholder="Số nhà, tên đường, phường/xã..." style="width: 100%; padding: 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-family: inherit;">
+            </div>
+            <button id="btnConfirmAddress" class="btn-primary" style="margin-top: 15px; max-width: 100%;">Xác nhận địa chỉ này</button>
+        </div>
+    </div>
+
     <script type="module" src="./controllers/headerController.js"></script>
     <script type="module" src="./controllers/cartController.js"></script>
     <div id="footer-placeholder"></div>
-
     <script src="./controllers/loadComponents.js"></script>
 </body>
 </html>

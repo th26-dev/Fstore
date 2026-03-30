@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 orders.push(data);
             });
 
+            // Sắp xếp đơn hàng mới nhất lên đầu
             orders.sort((a, b) => {
                 const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
                 const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
@@ -75,13 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
+                // =========================================
+                // ĐÃ THÊM DÒNG HIỂN THỊ ĐỊA CHỈ GIAO HÀNG VÀO ĐÂY
+                // =========================================
+                const addressHTML = order.deliveryAddress 
+                    ? `<p style="margin-top: 8px; font-weight: 500; color: #1d1d1f;"><i class="fa-solid fa-location-dot" style="color: #0071e3; margin-right: 5px;"></i> ${order.deliveryAddress}</p>` 
+                    : `<p style="margin-top: 8px; font-style: italic; color: #86868b;">Chưa cập nhật địa chỉ giao hàng</p>`;
+
                 html += `
                     <div class="order-card">
                         <div class="order-header">
-                            <div class="order-info">
+                            <div class="order-info" style="flex: 1; padding-right: 15px;">
                                 <h3>Mã đơn: #${order.orderId || order.docId.substring(0,8).toUpperCase()}</h3>
                                 <p>Ngày đặt: ${formatDate(order.createdAt)}</p>
-                            </div>
+                                ${addressHTML} </div>
                             <div class="order-status ${statusClass}">${statusText}</div>
                         </div>
                         
@@ -91,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         <div class="order-footer">
                             <span style="color: #86868b; font-size: 14px;">Tổng thanh toán:</span>
-                            <span class="order-total-price">${formatPrice(order.totalAmount || 0)}</span>
+                            <span class="order-total-price">${formatPrice(order.totalPrice || order.totalAmount || 0)}</span>
                         </div>
                     </div>
                 `;

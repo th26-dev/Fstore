@@ -1,5 +1,6 @@
-import { auth } from '../models/firebaseConfig.js';
+import { auth, db } from '../models/firebaseConfig.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
     const cartItemsContainer = document.getElementById('cartItems');
@@ -13,6 +14,78 @@ document.addEventListener('DOMContentLoaded', () => {
     let cartData = [];
     let userId = null;
 
+    // =========================================
+    // KHỞI TẠO BẢN ĐỒ VÀ ĐỊA CHỈ
+    // =========================================
+    let map = null;
+    let marker = null;
+    let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
+
+    const currentAddressText = document.getElementById('currentAddressText');
+    const detailAddressInput = document.getElementById('detailAddressInput');
+    const mapModal = document.getElementById('mapModal');
+    
+    if (finalAddress) currentAddressText.innerText = finalAddress;
+
+    async function getAddressFromCoords(lat, lng) {
+        detailAddressInput.value = "Đang tìm địa chỉ...";
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+            const data = await response.json();
+            if (data && data.display_name) {
+                detailAddressInput.value = data.display_name;
+            }
+        } catch (error) {
+            detailAddressInput.value = "Không thể định vị, vui lòng nhập tay.";
+        }
+    }
+
+    document.getElementById('btnOpenMap').addEventListener('click', () => {
+        mapModal.classList.add('active');
+        setTimeout(() => {
+            if (!map) {
+                map = L.map('deliveryMap').setView([10.7769, 106.6951], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                marker = L.marker([10.7769, 106.6951], {draggable: true}).addTo(map);
+
+                marker.on('dragend', function () {
+                    const coords = marker.getLatLng();
+                    getAddressFromCoords(coords.lat, coords.lng);
+                });
+
+                map.on('click', function(e) {
+                    marker.setLatLng(e.latlng);
+                    getAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                });
+            } else {
+                map.invalidateSize(); 
+            }
+        }, 300);
+    });
+
+    document.getElementById('closeMapModal').addEventListener('click', () => {
+        mapModal.classList.remove('active');
+    });
+
+    document.getElementById('btnConfirmAddress').addEventListener('click', () => {
+        const addr = detailAddressInput.value.trim();
+        if (addr && addr !== "Đang tìm địa chỉ...") {
+            finalAddress = addr;
+            currentAddressText.innerText = finalAddress;
+            localStorage.setItem('fstore_delivery_address', finalAddress);
+            mapModal.classList.remove('active');
+        } else {
+            alert("Vui lòng nhập hoặc chọn một địa chỉ hợp lệ!");
+        }
+    });
+
+
+    // =========================================
+    // LOGIC GIỎ HÀNG
+    // =========================================
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     onAuthStateChanged(auth, (user) => {
@@ -41,32 +114,26 @@ document.addEventListener('DOMContentLoaded', () => {
         
         cartData.forEach((item, index) => {
             if (!item.quantity) item.quantity = 1;
-            
             const itemTotalPrice = item.price * item.quantity;
             total += itemTotalPrice;
 
             html += `
-                <div class="cart-item" style="display: flex; border-bottom: 1px solid #d2d2d7; padding: 30px 0;">
-                    <img src="${item.image}" alt="${item.name}" class="cart-item-img" style="width: 120px; height: 120px; object-fit: contain; margin-right: 30px;">
-                    <div class="cart-item-details" style="flex: 1; display: flex; justify-content: space-between;">
-                        
+                <div class="cart-item">
+                    <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                    <div class="cart-item-details">
                         <div class="cart-item-info">
-                            <h3 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #1d1d1f;">${item.name}</h3>
-                            <p style="margin: 0; color: #86868b; font-size: 15px;">${item.color || ''} | ${item.storage || ''}</p>
+                            <h3>${item.name}</h3>
+                            <p>${item.color || ''} | ${item.storage || ''}</p>
                         </div>
-                        
                         <div class="cart-item-actions" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
                             <div style="font-size: 22px; font-weight: 600; color: #1d1d1f; margin-bottom: 15px;">${formatPrice(item.price)}</div>
-                            
                             <div class="qty-select-wrapper">
                                 <select class="qty-select" data-index="${index}">
                                     ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option value="${n}" ${item.quantity === n ? 'selected' : ''}>${n}</option>`).join('')}
                                 </select>
                             </div>
-
-                            <button class="btn-remove remove-item" data-index="${index}" style="background: none; border: none; color: #0071e3; cursor: pointer; font-size: 15px; padding: 0; margin-top: 10px;">Xóa</button>
+                            <button class="btn-remove remove-item" data-index="${index}">Xóa</button>
                         </div>
-
                     </div>
                 </div>`;
         });
@@ -77,13 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.qty-select').forEach(select => {
             select.addEventListener('change', (e) => {
                 const idx = e.target.dataset.index;
-                const newQty = parseInt(e.target.value);
-                
-                cartData[idx].quantity = newQty; 
+                cartData[idx].quantity = parseInt(e.target.value); 
                 localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData)); 
-                
                 window.dispatchEvent(new Event('cartUpdated')); 
-                
                 renderCart(); 
             });
         });
@@ -93,9 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const idx = e.target.dataset.index;
                 cartData.splice(idx, 1);
                 localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
-                
                 window.dispatchEvent(new Event('cartUpdated')); 
-                
                 if (cartData.length === 0) {
                     emptyCartView.style.display = 'block';
                     filledCartView.style.display = 'none';
@@ -106,13 +167,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // =========================================
+    // XỬ LÝ THANH TOÁN (MOMO & LƯU ĐỊA CHỈ)
+    // =========================================
     checkoutBtn.addEventListener('click', async () => {
+        // KIỂM TRA ĐỊA CHỈ TRƯỚC KHI CHO THANH TOÁN
+        if (!finalAddress) {
+            alert("Bạn chưa chọn địa chỉ giao hàng! Vui lòng chọn trên bản đồ.");
+            return;
+        }
+
         const totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
         
-        checkoutBtn.innerText = "Đang tạo mã QR MoMo...";
+        checkoutBtn.innerText = "Đang xử lý...";
         checkoutBtn.disabled = true;
 
         try {
+            // LƯU ĐƠN HÀNG VÀO FIREBASE VỚI TRẠNG THÁI "CHỜ THANH TOÁN" TRƯỚC KHI GỌI MOMO
+            const newOrder = {
+                userId: userId,
+                items: cartData,
+                totalPrice: totalAmount,
+                deliveryAddress: finalAddress, // Lưu vĩnh viễn địa chỉ này vào đơn hàng
+                status: "Chờ thanh toán",
+                createdAt: new Date()
+            };
+            
+            // Lưu lên Firestore
+            await addDoc(collection(db, "orders"), newOrder);
+
+            // Xóa giỏ hàng local vì đơn hàng đã được đẩy lên hệ thống chờ thanh toán
+            localStorage.removeItem(`cart_${userId}`);
+
+            // GỌI API MOMO
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
