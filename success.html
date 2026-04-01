@@ -27,7 +27,6 @@
     </div>
 
     <script type="module">
-        // Import thêm auth
         import { db, auth } from './models/firebaseConfig.js';
         import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -35,6 +34,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const resultCode = urlParams.get('resultCode'); 
+            
+            // LẤY ĐÚNG MÃ TỪ TRÊN THANH URL CỦA MOMO TRẢ VỀ
             const orderId = urlParams.get('orderId');
 
             const statusTitle = document.getElementById('statusTitle');
@@ -48,13 +49,13 @@
                 statusIcon.className = "fa-solid fa-circle-question";
                 statusIcon.style.color = "#86868b";
                 statusTitle.innerText = "Không tìm thấy mã đơn hàng!";
-                statusDesc.innerText = "Giao dịch không hợp lệ hoặc đã bị xóa.";
+                statusDesc.innerText = "Giao dịch không hợp lệ hoặc không có mã trả về từ MoMo.";
                 loadingMsg.style.display = "none";
                 btnHome.style.display = "inline-block";
                 return;
             }
 
-            // Ép hệ thống đợi xác thực người dùng xong mới được update Firebase
+            // Đợi xác thực Firebase xong mới cập nhật
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const orderRef = doc(db, "orders", orderId);
@@ -75,14 +76,12 @@
                             statusDesc.innerText = "Giao dịch không thành công, đơn hàng của bạn đã bị hủy.";
                         }
                     } catch (error) {
-                        console.error("LỖI BẢO MẬT FIREBASE:", error);
+                        console.error("LỖI CẬP NHẬT FIREBASE:", error);
                         statusIcon.className = "fa-solid fa-triangle-exclamation";
                         statusIcon.style.color = "#f59e0b";
-                        statusTitle.innerText = "Lỗi phân quyền Database!";
-                        statusDesc.innerText = "Nhấn F12 mở tab Console để xem lỗi chi tiết. Thường do Rules của Firebase chặn update.";
+                        statusTitle.innerText = "Đã nhận tiền nhưng lỗi đồng bộ!";
+                        statusDesc.innerText = "Nhấn F12 mở tab Console để xem lỗi. Thường do Rules của Firebase hoặc Adblock chặn update.";
                     }
-                    
-                    localStorage.removeItem('pending_momo_order_id');
                 } else {
                     statusIcon.className = "fa-solid fa-circle-xmark";
                     statusIcon.style.color = "#ff3b30";

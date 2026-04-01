@@ -1,6 +1,6 @@
 import { auth, db } from '../models/firebaseConfig.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// FIX: Đổi addDoc thành doc và setDoc để tự chủ động gán ID
+// Đã thay đổi import để dùng doc và setDoc
 import { collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutBtn.disabled = true;
 
         try {
-            // FIX: Tự tạo mã đơn hàng FSTORE_ đồng nhất với chuẩn gửi sang Backend
+            // 1. TỰ TẠO MÃ ĐƠN HÀNG ĐỒNG NHẤT
             const orderId = "FSTORE_" + Date.now();
 
             const newOrder = {
@@ -185,16 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
-            // FIX: Dùng setDoc để ghi trực tiếp mã orderId thay vì Firebase tự sinh mã ngẫu nhiên
+            // 2. ÉP FIREBASE LƯU ĐÚNG MÃ ORDER ID NÀY
             await setDoc(doc(db, "orders", orderId), newOrder);
 
-            // (Không còn cần localStorage cho việc kiểm tra đơn hàng nữa, MoMo sẽ trả về đúng ID này trên URL)
+            // 3. XÓA GIỎ HÀNG
             localStorage.removeItem(`cart_${userId}`);
 
+            // 4. GỬI ĐÚNG MÃ ĐÓ SANG BACKEND
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Gửi ID này sang Backend để tạo giao dịch MoMo
                 body: JSON.stringify({ amount: totalAmount, orderId: orderId })
             });
 
