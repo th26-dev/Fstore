@@ -1,6 +1,7 @@
 import { auth, db } from '../models/firebaseConfig.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
+// FIX: Đổi addDoc thành doc và setDoc để tự chủ động gán ID
+import { collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
     const cartItemsContainer = document.getElementById('cartItems');
@@ -172,27 +173,29 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutBtn.disabled = true;
 
         try {
+            // FIX: Tự tạo mã đơn hàng FSTORE_ đồng nhất với chuẩn gửi sang Backend
+            const orderId = "FSTORE_" + Date.now();
+
             const newOrder = {
                 userId: userId,
                 items: cartData,
-                totalAmount: totalAmount, // FIX 1: Lưu đúng field totalAmount để Admin đọc được
+                totalAmount: totalAmount, 
                 deliveryAddress: finalAddress, 
                 status: "Chờ thanh toán",
                 createdAt: new Date()
             };
             
-            // Lấy ID của document vừa tạo
-            const docRef = await addDoc(collection(db, "orders"), newOrder);
+            // FIX: Dùng setDoc để ghi trực tiếp mã orderId thay vì Firebase tự sinh mã ngẫu nhiên
+            await setDoc(doc(db, "orders", orderId), newOrder);
 
-            // Lưu tạm ID đơn hàng vào localStorage để bắt kết quả trả về từ MoMo
-            localStorage.setItem('pending_momo_order_id', docRef.id);
-
+            // (Không còn cần localStorage cho việc kiểm tra đơn hàng nữa, MoMo sẽ trả về đúng ID này trên URL)
             localStorage.removeItem(`cart_${userId}`);
 
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: totalAmount, orderId: docRef.id })
+                // Gửi ID này sang Backend để tạo giao dịch MoMo
+                body: JSON.stringify({ amount: totalAmount, orderId: orderId })
             });
 
             const data = await response.json();
