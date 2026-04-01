@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let ordersList = [];
     let isEditCategory = false;
 
-    // Kiểm tra quyền Admin
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
             window.location.href = 'auth.html';
@@ -99,18 +98,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const o = doc.data();
             o.id = doc.id; 
             ordersList.push(o);
-            totalRev += o.totalAmount || 0;
+            
+            // SỬA LỖI 0đ: Tính tổng cả 2 trường hợp cũ và mới
+            totalRev += (o.totalAmount || o.totalPrice || 0);
             
             let statusColor = "#f59e0b";
             if (o.status === "Đang giao" || o.status === "Shipped") statusColor = "#007aff";
             if (o.status === "Hoàn thành" || o.status === "Completed") statusColor = "#34c759";
+            // Cập nhật màu xanh cho trạng thái Đã thanh toán
+            if (o.status === "Đã thanh toán" || o.status === "Chờ duyệt") statusColor = "#34c759"; 
             if (o.status === "Đã hủy" || o.status === "Cancelled") statusColor = "#ff3b30";
 
             orderHtml += `<tr>
                 <td>${o.orderId || o.id}</td>
                 <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
-                <td><strong>${formatPrice(o.totalAmount || 0)}</strong></td>
-                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ duyệt'}</span></td>
+                <td><strong>${formatPrice(o.totalAmount || o.totalPrice || 0)}</strong></td>
+                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ thanh toán'}</span></td>
             </tr>`;
         });
         
@@ -210,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     revenueByCategory[catName] = (revenueByCategory[catName] || 0) + itemTotal;
                 });
             } else {
-                const total = o.totalAmount || 0;
+                const total = o.totalAmount || o.totalPrice || 0;
                 revenueByCategory['Chưa phân loại'] = (revenueByCategory['Chưa phân loại'] || 0) + total;
             }
         });
