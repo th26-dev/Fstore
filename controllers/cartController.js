@@ -14,9 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let cartData = [];
     let userId = null;
 
-    // =========================================
-    // KHỞI TẠO BẢN ĐỒ VÀ ĐỊA CHỈ
-    // =========================================
     let map = null;
     let marker = null;
     let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
@@ -82,10 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
-    // =========================================
-    // LOGIC GIỎ HÀNG
-    // =========================================
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     onAuthStateChanged(auth, (user) => {
@@ -167,11 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // =========================================
-    // XỬ LÝ THANH TOÁN (MOMO & LƯU ĐỊA CHỈ)
-    // =========================================
     checkoutBtn.addEventListener('click', async () => {
-        // KIỂM TRA ĐỊA CHỈ TRƯỚC KHI CHO THANH TOÁN
         if (!finalAddress) {
             alert("Bạn chưa chọn địa chỉ giao hàng! Vui lòng chọn trên bản đồ.");
             return;
@@ -183,27 +172,27 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutBtn.disabled = true;
 
         try {
-            // LƯU ĐƠN HÀNG VÀO FIREBASE VỚI TRẠNG THÁI "CHỜ THANH TOÁN" TRƯỚC KHI GỌI MOMO
             const newOrder = {
                 userId: userId,
                 items: cartData,
-                totalPrice: totalAmount,
-                deliveryAddress: finalAddress, // Lưu vĩnh viễn địa chỉ này vào đơn hàng
+                totalAmount: totalAmount, // FIX 1: Lưu đúng field totalAmount để Admin đọc được
+                deliveryAddress: finalAddress, 
                 status: "Chờ thanh toán",
                 createdAt: new Date()
             };
             
-            // Lưu lên Firestore
-            await addDoc(collection(db, "orders"), newOrder);
+            // Lấy ID của document vừa tạo
+            const docRef = await addDoc(collection(db, "orders"), newOrder);
 
-            // Xóa giỏ hàng local vì đơn hàng đã được đẩy lên hệ thống chờ thanh toán
+            // Lưu tạm ID đơn hàng vào localStorage để bắt kết quả trả về từ MoMo
+            localStorage.setItem('pending_momo_order_id', docRef.id);
+
             localStorage.removeItem(`cart_${userId}`);
 
-            // GỌI API MOMO
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: totalAmount })
+                body: JSON.stringify({ amount: totalAmount, orderId: docRef.id })
             });
 
             const data = await response.json();

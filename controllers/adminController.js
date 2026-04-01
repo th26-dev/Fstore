@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
     const loadAdminData = async () => {
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
         categoriesList = [];
@@ -141,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
     const renderProductsTable = (filterCatId) => {
         let prodHtml = '';
         
@@ -166,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('adminProductList').innerHTML = prodHtml || '<tr><td colspan="4" style="text-align: center; padding: 20px;">Không có sản phẩm nào trong danh mục này</td></tr>';
     };
-
 
     let revenueChartInstance = null;
     let orderPieChartInstance = null;
@@ -371,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
     const prodModal = document.getElementById('productModal');
     const variantsContainer = document.getElementById('variantsContainer');
     const specsContainer = document.getElementById('specsContainer');
@@ -508,8 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
-  
     window.replyForum = async (id) => {
         const reply = prompt("Nhập nội dung trả lời:");
         if (reply) {
