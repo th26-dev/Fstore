@@ -17,6 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+    
+    // HÀM FOMAT THỜI GIAN TỪ FIREBASE
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "Không rõ thời gian";
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+    };
 
     let categoriesList = [];
     let productsList = [];
@@ -90,36 +97,29 @@ document.addEventListener('DOMContentLoaded', () => {
         
         renderProductsTable(filterSelect ? filterSelect.value : "all");
 
+        // LẤY DỮ LIỆU ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
         ordersList = [];
-        let totalRev = 0, orderHtml = '';
+        let totalRev = 0;
         
         orderSnap.forEach(doc => {
             const o = doc.data();
             o.id = doc.id; 
             ordersList.push(o);
-            
-            // SỬA LỖI 0đ: Tính tổng cả 2 trường hợp cũ và mới
             totalRev += (o.totalAmount || o.totalPrice || 0);
-            
-            let statusColor = "#f59e0b";
-            if (o.status === "Đang giao" || o.status === "Shipped") statusColor = "#007aff";
-            if (o.status === "Hoàn thành" || o.status === "Completed") statusColor = "#34c759";
-            // Cập nhật màu xanh cho trạng thái Đã thanh toán
-            if (o.status === "Đã thanh toán" || o.status === "Chờ duyệt") statusColor = "#34c759"; 
-            if (o.status === "Đã hủy" || o.status === "Cancelled") statusColor = "#ff3b30";
-
-            orderHtml += `<tr>
-                <td>${o.orderId || o.id}</td>
-                <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
-                <td><strong>${formatPrice(o.totalAmount || o.totalPrice || 0)}</strong></td>
-                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ thanh toán'}</span></td>
-            </tr>`;
         });
         
         document.getElementById('statOrders').innerText = ordersList.length;
         document.getElementById('statRevenue').innerText = formatPrice(totalRev);
-        document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="4">Chưa có đơn hàng</td></tr>';
+        
+        // Gọi hàm render bảng đơn hàng có chức năng sắp xếp
+        renderOrdersTable();
+
+        // Bắt sự kiện khi Admin đổi kiểu sắp xếp
+        const sortOrderSelect = document.getElementById('sortOrderSelect');
+        if (sortOrderSelect) {
+            sortOrderSelect.addEventListener('change', renderOrdersTable);
+        }
 
         const forumSnap = await getDocs(query(collection(db, "forum_posts"), orderBy("createdAt", "desc")));
         let forumHtml = '';
@@ -141,6 +141,41 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRealCharts(timeFilter.value);
             timeFilter.addEventListener('change', (e) => renderRealCharts(e.target.value));
         }
+    };
+
+    // HÀM RENDER BẢNG ĐƠN HÀNG (CÓ SẮP XẾP)
+    const renderOrdersTable = () => {
+        const sortVal = document.getElementById('sortOrderSelect')?.value || 'newest';
+        
+        // Clone mảng để không ảnh hưởng đến dữ liệu gốc
+        let sortedOrders = [...ordersList];
+        
+        // Sắp xếp
+        sortedOrders.sort((a, b) => {
+            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt).getTime() || 0);
+            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt).getTime() || 0);
+            
+            if (sortVal === 'newest') return timeB - timeA; // Mới nhất lên đầu
+            return timeA - timeB; // Cũ nhất lên đầu
+        });
+
+        let orderHtml = '';
+        sortedOrders.forEach(o => {
+            let statusColor = "#f59e0b";
+            if (o.status === "Đang giao" || o.status === "Shipped") statusColor = "#007aff";
+            if (o.status === "Hoàn thành" || o.status === "Completed") statusColor = "#34c759";
+            if (o.status === "Đã thanh toán" || o.status === "Chờ duyệt") statusColor = "#34c759"; 
+            if (o.status === "Đã hủy" || o.status === "Cancelled") statusColor = "#ff3b30";
+
+            orderHtml += `<tr>
+                <td>${o.orderId || o.id}</td>
+                <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
+                <td>${formatDate(o.createdAt)}</td> <td><strong>${formatPrice(o.totalAmount || o.totalPrice || 0)}</strong></td>
+                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ thanh toán'}</span></td>
+            </tr>`;
+        });
+
+        document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Chưa có đơn hàng</td></tr>';
     };
 
     const renderProductsTable = (filterCatId) => {

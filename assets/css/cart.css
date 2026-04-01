@@ -23,9 +23,6 @@ body {
 }
 .btn-primary:hover { background-color: #0077ed; transform: scale(1.02); }
 
-/* =========================================
-   ĐỊA CHỈ & BẢN ĐỒ
-========================================= */
 .delivery-address-section {
     background: #fbfbfd; border: 1px solid #d2d2d7; border-radius: 16px;
     padding: 20px; margin: 0 auto 25px auto; max-width: 500px; text-align: left;
@@ -40,7 +37,6 @@ body {
 }
 .btn-change-address:hover { background: #d2d2d7; }
 
-/* Modal Bản Đồ */
 .map-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);

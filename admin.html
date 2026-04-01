@@ -96,9 +96,15 @@
             </div>
 
             <div id="tab-orders" class="tab-content">
-                <h3>Quản lý đơn hàng</h3>
+                <div class="flex-between" style="margin-bottom: 20px;">
+                    <h3>Quản lý đơn hàng</h3>
+                    <select id="sortOrderSelect" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
+                        <option value="newest">Đơn mới nhất</option>
+                        <option value="oldest">Đơn cũ nhất</option>
+                    </select>
+                </div>
                 <table class="data-table">
-                    <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead>
+                    <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Thời gian</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead>
                     <tbody id="adminOrderList"></tbody>
                 </table>
             </div>

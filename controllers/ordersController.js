@@ -15,32 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
     };
 
-    // --- FIX 2: BẮT KẾT QUẢ TỪ MOMO TRẢ VỀ ---
     const checkMoMoPaymentResult = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const pendingOrderId = localStorage.getItem('pending_momo_order_id');
         
-        // Nếu có ID đơn hàng đang chờ và URL có chứa resultCode của MoMo
         if (pendingOrderId && urlParams.has('resultCode')) {
             const resultCode = urlParams.get('resultCode');
             const orderRef = doc(db, "orders", pendingOrderId);
             
             try {
                 if (resultCode === '0') {
-                    // Thanh toán thành công -> Đổi trạng thái thành Chờ duyệt
                     await updateDoc(orderRef, { status: "Chờ duyệt" });
                 } else {
-                    // Thanh toán thất bại hoặc hủy -> Đổi trạng thái thành Đã hủy
                     await updateDoc(orderRef, { status: "Đã hủy" });
                 }
             } catch (error) {
                 console.error("Lỗi cập nhật trạng thái đơn hàng từ MoMo: ", error);
             }
             
-            // Xóa biến tạm sau khi xử lý xong
             localStorage.removeItem('pending_momo_order_id');
             
-            // Xóa các tham số MoMo trên URL cho sạch đẹp (tuỳ chọn)
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
@@ -51,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Gọi hàm kiểm tra MoMo trước khi load danh sách đơn hàng
         await checkMoMoPaymentResult();
 
         try {
