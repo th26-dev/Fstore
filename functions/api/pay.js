@@ -16,7 +16,7 @@ export async function onRequestPost(context) {
         const url = new URL(context.request.url);
         const domain = url.origin;
 
-        const orderId = "FSTORE_" + Date.now();
+        const orderId = body.orderId || "FSTORE_" + Date.now(); 
         const requestId = orderId;
         const orderInfo = "Thanh toan don hang FStore";
         const redirectUrl = `${domain}/success.html`;
