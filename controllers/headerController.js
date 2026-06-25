@@ -2,49 +2,35 @@ import { db, auth } from '../models/firebaseConfig.js';
 import { collection, getDocs, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// =========================================================
-// 1. XỬ LÝ KẾT QUẢ THANH TOÁN MOMO TOÀN CỤC (GLOBAL)
-// =========================================================
 const checkMoMoPaymentResultGlobal = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const pendingOrderId = localStorage.getItem('pending_momo_order_id');
     
-    // Nếu có đơn hàng đang chờ và MoMo vừa trả về tham số resultCode trên URL
     if (pendingOrderId && urlParams.has('resultCode')) {
         const resultCode = urlParams.get('resultCode');
         const orderRef = doc(db, "orders", pendingOrderId);
         
         try {
             if (resultCode === '0') {
-                // Thành công
                 await updateDoc(orderRef, { status: "Đã thanh toán" });
                 alert("Thanh toán MoMo thành công! Đơn hàng đang được chờ duyệt.");
             } else {
-                // Thất bại hoặc Khách hàng chủ động hủy (hủy giao dịch)
                 await updateDoc(orderRef, { status: "Đã hủy" });
                 alert("Thanh toán bị hủy hoặc thất bại.");
             }
         } catch (error) {
-            console.error("Lỗi cập nhật trạng thái đơn hàng trên Firebase: ", error);
+            console.error(error);
         }
         
-        // Xóa mã tạm khỏi bộ nhớ localStorage
         localStorage.removeItem('pending_momo_order_id');
-        
-        // Dọn dẹp URL cho đẹp (bỏ các tham số rác của MoMo)
         window.history.replaceState({}, document.title, window.location.pathname);
         
-        // Điều hướng khách hàng về trang quản lý đơn hàng nếu họ chưa ở đó
         if (!window.location.pathname.includes('orders.html')) {
             window.location.href = 'orders.html';
         }
     }
 };
 
-
-// =========================================================
-// 2. XỬ LÝ GIAO DIỆN HEADER (SCROLL, MENU, SEARCH, CART)
-// =========================================================
 const header = document.querySelector('.liquid-header');
 let isScrolled = false;
 
@@ -59,8 +45,6 @@ window.addEventListener('scroll', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    
-    // Khởi chạy hàm bắt kết quả MoMo ngay khi load trang
     await checkMoMoPaymentResultGlobal();
 
     const mainNavList = document.getElementById('mainNavList');
@@ -70,7 +54,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentUser = null;
 
-    // --- CẬP NHẬT GIỎ HÀNG DROP-DOWN ---
     const updateCartDropdown = () => {
         const dropdown = document.getElementById('cartDropdown');
         if (!dropdown) return;
@@ -145,7 +128,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.addEventListener('cartUpdated', updateCartDropdown);
 
-    // --- TẢI DANH MỤC LÊN THANH ĐIỀU HƯỚNG ---
     try {
         const categoriesRef = collection(db, "categories");
         const snapshot = await getDocs(query(categoriesRef, orderBy("order")));
@@ -173,7 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             mainNavList.innerHTML = navHTML;
             updateCartDropdown();
 
-            // Xử lý Mega Menu
             const navItems = document.querySelectorAll('.has-dropdown');
             navItems.forEach(item => {
                 item.addEventListener('mouseenter', function() {
@@ -207,13 +188,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // --- XỬ LÝ THANH TÌM KIẾM ---
         const searchBtn = document.getElementById('searchBtn');
         const searchBarContainer = document.getElementById('searchBarContainer');
         const closeSearchBtn = document.getElementById('closeSearchBtn');
         const searchInput = document.getElementById('searchInput');
 
         if (searchBtn && searchBarContainer && closeSearchBtn && searchInput) {
+            const suggestionBox = document.createElement('div');
+            suggestionBox.className = 'search-suggestions';
+            searchBarContainer.appendChild(suggestionBox);
+
+            let allProductsForSearch = [];
+            const loadProductsForSearch = async () => {
+                try {
+                    const prodRef = collection(db, "products");
+                    const snapshot = await getDocs(prodRef);
+                    snapshot.forEach(doc => {
+                        allProductsForSearch.push({ id: doc.id, ...doc.data() });
+                    });
+                } catch (error) {
+                    console.error(error);
+                }
+            };
+            loadProductsForSearch();
+
             searchBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 searchBarContainer.classList.add('active');
@@ -224,12 +222,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             closeSearchBtn.addEventListener('click', () => {
                 searchBarContainer.classList.remove('active');
                 if(pageOverlay) pageOverlay.classList.remove('show');
+                suggestionBox.classList.remove('show');
+                searchInput.value = '';
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const keyword = e.target.value.trim().toLowerCase();
+                
+                if (!keyword) {
+                    suggestionBox.classList.remove('show');
+                    return;
+                }
+
+                const filteredProducts = allProductsForSearch.filter(p => 
+                    p.name.toLowerCase().includes(keyword)
+                );
+
+                if (filteredProducts.length === 0) {
+                    suggestionBox.innerHTML = '<div class="suggest-empty">Không tìm thấy sản phẩm nào phù hợp...</div>';
+                } else {
+                    const top5Products = filteredProducts.slice(0, 5);
+                    suggestionBox.innerHTML = top5Products.map(p => {
+                        let imgUrl = "https://via.placeholder.com/45";
+                        if (p.variants && p.variants.length > 0) {
+                            const firstVariant = p.variants[0];
+                            if (firstVariant.images && firstVariant.images.length > 0) imgUrl = firstVariant.images[0];
+                            else if (firstVariant.image) imgUrl = firstVariant.image;
+                        }
+                        if (imgUrl === "https://via.placeholder.com/45") {
+                            if (p.images && p.images.length > 0) imgUrl = p.images[0];
+                            else if (p.image) imgUrl = p.image;
+                        }
+
+                        let price = 0;
+                        if (p.variants && p.variants.length > 0 && p.variants[0].price) {
+                            price = p.variants[0].price;
+                        } else if (p.price) {
+                            price = p.price;
+                        } else if (p.basePrice) {
+                            price = p.basePrice;
+                        }
+
+                        const formattedPrice = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+                        
+                        return `
+                            <div class="suggest-item" data-id="${p.id}">
+                                <img src="${imgUrl}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/45'">
+                                <div class="suggest-info">
+                                    <h4>${p.name}</h4>
+                                    <p>${formattedPrice}</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                suggestionBox.classList.add('show');
+            });
+
+            suggestionBox.addEventListener('click', (e) => {
+                const clickedItem = e.target.closest('.suggest-item');
+                if (clickedItem) {
+                    const productId = clickedItem.getAttribute('data-id');
+                    localStorage.setItem('pendingProductOpen', productId);
+                    window.location.href = 'index.html'; 
+                }
             });
 
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const keyword = searchInput.value.trim();
                     if (!keyword) return;
+                    
                     const path = window.location.pathname.toLowerCase();
                     const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
                     
@@ -237,17 +301,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         e.preventDefault();
                         localStorage.setItem('pendingSearchKeyword', keyword);
                         window.location.href = 'index.html';
+                    } else {
+                        suggestionBox.classList.remove('show');
                     }
                 }
             });
         }
 
     } catch (error) {
-        console.error("Lỗi khởi tạo Header:", error);
+        console.error(error);
     }
 });
 
-// Xử lý click vào Sub-category để lọc trang chủ
 document.addEventListener('click', (e) => {
     const categoryItem = e.target.closest('.sub-category-item');
     if (categoryItem) {
@@ -262,4 +327,4 @@ document.addEventListener('click', (e) => {
             window.location.href = 'index.html'; 
         }
     }
-});
+});c

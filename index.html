@@ -3,12 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FStore - Cửa Hàng Điện Tử</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">    <link rel="stylesheet" href="./assets/css/style.css">
+    <title>FStore - Cửa Hàng Nước Giải Khát</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">    
+    <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="./assets/css/header.css">
     <link rel="stylesheet" href="./assets/css/home.css">
     <link rel="stylesheet" href="./assets/css/product.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* CSS CHATBOT AI FSTORE (LIQUID & IMESSAGE) */
+        .ai-chat-btn {
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+            background: #0071e3; color: white; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; box-shadow: 0 10px 20px rgba(0, 113, 227, 0.3);
+            cursor: pointer; z-index: 9999; transition: transform 0.3s ease;
+        }
+        .ai-chat-btn:hover { transform: scale(1.1); }
+        
+        .ai-chat-window {
+            position: fixed; bottom: 100px; right: 30px; width: 360px; height: 550px;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; z-index: 9999;
+            
+            /* TRẠNG THÁI ĐÓNG (GIỌT NƯỚC) */
+            opacity: 0; visibility: hidden;
+            transform-origin: bottom right;
+            transform: scale(0.2) translateY(50px);
+            border-radius: 50% 50% 5% 50%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ai-chat-window.active { 
+            visibility: visible; 
+            animation: liquidDropOpen 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes liquidDropOpen {
+            0% { opacity: 0; transform: scale(0.2) translateY(50px); border-radius: 50% 50% 5% 50%; }
+            50% { opacity: 1; transform: scale(1.05) translateY(-10px); border-radius: 20px; }
+            75% { transform: scale(0.98) translateY(5px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); border-radius: 20px; }
+        }
+
+        .chat-header {
+            padding: 15px 20px; background: #f5f5f7; border-radius: 20px 20px 0 0;
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 600; color: #1d1d1f; border-bottom: 1px solid #d2d2d7;
+        }
+        #close-chat-btn { cursor: pointer; color: #86868b; transition: 0.3s; }
+        #close-chat-btn:hover { color: #ff3b30; }
+        
+        .chat-body { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .chat-body::-webkit-scrollbar { width: 6px; }
+        .chat-body::-webkit-scrollbar-thumb { background: #d2d2d7; border-radius: 10px; }
+
+        .chat-footer { padding: 15px; border-top: 1px solid #f5f5f7; display: flex; gap: 10px; }
+        #chat-input { flex: 1; padding: 10px 15px; border: 1px solid #d2d2d7; border-radius: 20px; outline: none; font-family: inherit; }
+        #send-chat-btn { background: #0071e3; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: 0.3s; }
+        #send-chat-btn:hover { background: #0077ed; }
+
+        /* HIỆU ỨNG TIN NHẮN TRƯỢT iMESSAGE */
+        @keyframes iMessageSlideUp {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .chat-message { 
+            max-width: 85%; padding: 12px 16px; border-radius: 18px; 
+            font-size: 14px; line-height: 1.5; word-wrap: break-word;
+            animation: iMessageSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; 
+        }
+        .bot-msg { background: #f5f5f7; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .user-msg { background: #0071e3; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        /* GIAO DIỆN THẺ SẢN PHẨM TRONG CHAT */
+        .ai-product-card {
+            display: flex; gap: 12px; align-items: center;
+            background: #ffffff; border: 1px solid #e5e5ea; border-radius: 12px;
+            padding: 10px; margin-top: 8px; margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .ai-product-card img {
+            width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #f5f5f7;
+        }
+        .ai-product-info { flex: 1; }
+        .ai-product-info h4 { margin: 0 0 4px 0; font-size: 13px; color: #1d1d1f; line-height: 1.2;}
+        .ai-product-info p { margin: 0 0 8px 0; font-size: 13px; color: #ff3b30; font-weight: 600; }
+        .ai-product-btn {
+            background: #0071e3; color: white; border: none; border-radius: 14px;
+            padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .ai-product-btn:hover { background: #0077ed; transform: scale(1.05); }
+    </style>
 </head>
 <body>
     <header class="liquid-header">
@@ -32,15 +121,15 @@
     <div id="landingPage" class="landing-page-container dark-theme">
         
         <section class="landing-section scroll-anim slide-up" style="padding-top: 60px;">
-            <h1 class="landing-title">Galaxy S26 Ultra</h1>
-            <p class="landing-subtitle">Kỷ nguyên AI mới. Quyền năng đột phá.</p>
+            <h1 class="landing-title">BẬT NẮP BUDWEISER</h1>
+            <p class="landing-subtitle">MỪNG MỌI BƯỚC TIẾN CÙNG STEVEN NGUYỄN</p>
             
             <div class="ambilight-wrapper">
                 <video autoplay muted loop playsinline class="ambilight-glow">
-                    <source src="./assets/media/Privacy Display _ Galaxy S26 Ultra _ Samsung - (1080p).mp4" type="video/mp4">
+                    <source src="./assets/media/beerBUDWEISER.mp4" type="video/mp4">
                 </video>
                 <video autoplay muted loop playsinline class="landing-media">
-                    <source src="./assets/media/Privacy Display _ Galaxy S26 Ultra _ Samsung - (1080p).mp4" type="video/mp4">
+                    <source src="./assets/media/beerBUDWEISER.mp4" type="video/mp4">
                 </video>
             </div>
         </section>
@@ -48,16 +137,16 @@
         <section class="landing-section white-block scroll-anim pop-up">
             <div class="split-container">
                 <div class="split-text">
-                    <h2>Thiết kế titan.</h2>
-                    <p>Mạnh mẽ hơn. Nhẹ nhàng hơn. Đẳng cấp hơn bao giờ hết. Khung viền titan mới mang lại độ bền vượt trội và cảm giác cầm nắm hoàn hảo, giúp bạn tự tin tỏa sáng mọi lúc mọi nơi.</p>
+                    <h2>Bia Saigon Export Premium - SABECO</h2>
+                    <p>“Bia Saigon Export Premium – Chất bia êm đằm và sảng khoái” Bia mới, được nấu từ nguyêu liệu tự nhiên và dùng công nghệ lên men chậm, thời gian ủ dài mang đến hương vị tuyệt hảo.</p>
                 </div>
                 <div class="split-media">
                     <div class="ambilight-wrapper">
                         <video autoplay muted loop playsinline class="ambilight-glow">
-                            <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                            <source src="./assets/media/beerSAIGON.mp4" type="video/mp4">
                         </video>
                         <video autoplay muted loop playsinline class="landing-media">
-                            <source src="./assets/media/galaxy-s26-features-design-intro.mp4" type="video/mp4">
+                            <source src="./assets/media/beerSAIGON.mp4" type="video/mp4">
                         </video>
                     </div>
                 </div>
@@ -65,34 +154,34 @@
         </section>
 
         <section class="landing-section scroll-anim slide-up" style="padding-top: 100px;">
-            <h1 class="landing-title" style="background: linear-gradient(90deg, #e3c099, #c0b2a2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">iPhone 17 Pro</h1>
-            <p class="landing-subtitle">Đỉnh cao thiết kế. Kỷ nguyên mới của Apple Intelligence.</p>
+            <h1 class="landing-title" style="background: linear-gradient(90deg, #e3c099, #c0b2a2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">333</h1>
+            <p class="landing-subtitle">“Biểu Tượng Vang Danh Mọi Thời”</p>
             
             <div class="ambilight-wrapper">
                 <video autoplay muted loop playsinline class="ambilight-glow">
-                    <source src="./assets/media/freecompress-Introducing iPhone 17 Pro and iPhone 17 Pro Max.mp4" type="video/mp4">
+                    <source src="./assets/media/beer333PILSNER.mp4" type="video/mp4">
                 </video>
                 <video autoplay muted loop playsinline class="landing-media">
-                    <source src="./assets/media/freecompress-Introducing iPhone 17 Pro and iPhone 17 Pro Max.mp4" type="video/mp4">
+                    <source src="./assets/media/beer333PILSNER.mp4" type="video/mp4">
                 </video>
             </div>
         </section>
 
-        <section class="landing-section white-block scroll-anim pop-up">
+        <section class="landing-section white-block scroll-anim pop-up">        
             <div class="split-container" style="flex-direction: row-reverse;">
                 
                 <div class="split-text">
-                    <h2>Camera Control.</h2>
-                    <p>Hoàn toàn kiểm soát. Không bỏ lỡ khoảnh khắc nào. Chạm, trượt và tinh chỉnh mọi thông số nhiếp ảnh chuyên nghiệp một cách mượt mà chỉ bằng một ngón tay.</p>
+                    <h2>HEINEKEN Việt Nam</h2>
+                    <p>Heineken Silver Chai Nhôm Mới sẽ đồng loạt có mặt ở hàng trăm tụ điểm tại: Hà Nội, Hải Phòng, Đà Nẵng, Nha Trang, TP. Hồ Chí Minh, Vũng Tàu, Bình Dương, Cần Thơ, Phú Quốc và Hội An.</p>
                 </div>
 
                 <div class="split-media">
                     <div class="ambilight-wrapper">
                         <video autoplay muted loop playsinline class="ambilight-glow">
-                            <source src="./assets/media/freecompress-Introducing iPhone 17.mp4" type="video/mp4">
+                            <source src="./assets/media/beerHeinekenSilver.mp4" type="video/mp4">
                         </video>
                         <video autoplay muted loop playsinline class="landing-media">
-                            <source src="./assets/media/freecompress-Introducing iPhone 17.mp4" type="video/mp4">
+                            <source src="./assets/media/beerHeinekenSilver.mp4" type="video/mp4">
                         </video>
                     </div>
                 </div>
@@ -139,10 +228,232 @@
         <span id="toastMessage">Đã thêm vào giỏ hàng!</span>
     </div>
 
+    <div id="ai-chat-btn" class="ai-chat-btn">
+        <i class="fa-solid fa-robot"></i>
+    </div>
+
+    <div id="ai-chat-window" class="ai-chat-window">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <i class="fa-solid fa-robot"></i> FStore AI Consultant
+            </div>
+            <i class="fa-solid fa-xmark" id="close-chat-btn"></i>
+        </div>
+        
+        <div class="chat-body" id="chat-body">
+            <div class="chat-message bot-msg">
+                Xin chào! Mình là trợ lý AI của FStore. Mình có thể giúp gì cho bạn hôm nay?
+            </div>
+        </div>
+        
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Nhập câu hỏi của bạn...">
+            <button id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './models/firebaseConfig.js';
+        import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_KEY = "AQ.Ab8RN" + "6I3Ik59qVY7M" + "lzVyukCL2UYQIFytQwUgLMNUfdXI-cLUQ";
+
+            const chatBtn = document.getElementById('ai-chat-btn');
+            const chatWindow = document.getElementById('ai-chat-window');
+            const closeChatBtn = document.getElementById('close-chat-btn');
+            const chatBody = document.getElementById('chat-body');
+            const chatInput = document.getElementById('chat-input');
+            const sendChatBtn = document.getElementById('send-chat-btn');
+
+            let localStoreData = {}; 
+            let chatHistory = JSON.parse(sessionStorage.getItem('fstore_ai_history')) || [];
+            let isFirebaseLoaded = false;
+
+            if(chatBtn) chatBtn.addEventListener('click', () => chatWindow.classList.toggle('active'));
+            if(closeChatBtn) closeChatBtn.addEventListener('click', () => chatWindow.classList.remove('active'));
+
+            const appendMessage = (text, sender, isHistoryLoad = false) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('chat-message', sender === 'user' ? 'user-msg' : 'bot-msg');
+                
+                let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                formattedText = formattedText.replace(/\n/g, '<br>');
+
+                formattedText = formattedText.replace(/\[link:(.*?)\]/g, (match, pId) => {
+                    const p = localStoreData[pId];
+                    if (!p) {
+                        return `<span class="product-card" data-id="${pId}" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; padding: 6px 14px !important; background: #0071e3 !important; color: #ffffff !important; border-radius: 16px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; margin: 0 4px !important; border: none !important; width: auto !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,113,229,0.3) !important;">Xem chi tiết</span>`;
+                    }
+                    
+                    const priceStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price);
+                    
+                    return `
+                        <div class="ai-product-card">
+                            <img src="${p.image}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/60'">
+                            <div class="ai-product-info">
+                                <h4>${p.name}</h4>
+                                <p>${priceStr}</p>
+                                <button class="ai-product-btn product-card" data-id="${pId}">Xem chi tiết</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                msgDiv.innerHTML = formattedText;
+                if (isHistoryLoad) msgDiv.style.animation = 'none';
+
+                chatBody.appendChild(msgDiv);
+                chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: isHistoryLoad ? 'auto' : 'smooth' });
+            };
+
+            const loadFirebaseData = async () => {
+                if (isFirebaseLoaded) return window.fstoreProductContext;
+                let productContext = "";
+                try {
+                    const querySnapshot = await getDocs(collection(db, "products"));
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const id = doc.id;
+                        const name = data.name || "";
+                        const variants = data.variants || [];
+                        let specs = "";
+                        if (data.techSpecs) specs = Object.entries(data.techSpecs).map(([k, v]) => `${k}: ${v}`).join(", ");
+                        
+                        const img = (variants.length > 0 && variants[0].images && variants[0].images.length > 0) ? variants[0].images[0] : (data.image || (data.images && data.images[0]) || "https://via.placeholder.com/60");
+                        const price = (variants.length > 0 && variants[0].price) ? variants[0].price : (data.price || data.basePrice || 0);
+                        
+                        localStoreData[id] = { name, image: img, price };
+                        const variantStr = variants.map(v => `${v.storage || ''} - ${v.color || ''} (${v.price || 0}đ)`).join(" | ");
+                        productContext += `[ID: ${id} | Tên: ${name} | Biến thể: ${variantStr} | Thông số: ${specs}]\n`;
+                    });
+                    window.fstoreProductContext = productContext;
+                    isFirebaseLoaded = true;
+                } catch (error) { 
+                    console.error("Lỗi đọc Firebase:", error); 
+                }
+                return window.fstoreProductContext;
+            };
+
+            const initChatbot = async () => {
+                await loadFirebaseData();
+                if (chatHistory.length > 0) {
+                    chatBody.innerHTML = ''; 
+                    chatHistory.forEach(item => {
+                        const sender = item.role === 'user' ? 'user' : 'bot';
+                        appendMessage(item.parts[0].text, sender, true); 
+                    });
+                }
+            };
+            
+            initChatbot();
+
+            const callGeminiAPI = async (userText) => {
+                const cleanApiKey = API_KEY.trim();
+                let currentContext = await loadFirebaseData();
+                let targetModel = "gemini-1.5-flash"; 
+                
+                try {
+                    const checkModelUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
+                    const modelRes = await fetch(checkModelUrl);
+                    const modelData = await modelRes.json();
+                    
+                    if (modelData.models) {
+                        const validModels = modelData.models.filter(m => 
+                            m.supportedGenerationMethods && 
+                            m.supportedGenerationMethods.includes("generateContent") && 
+                            m.name.includes("gemini")
+                        );
+                        if (validModels.length > 0) {
+                            const flashModel = validModels.find(m => m.name.includes("1.5-flash"));
+                            targetModel = flashModel ? flashModel.name.replace('models/', '') : validModels[0].name.replace('models/', '');
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Không dò được model, dùng mặc định.");
+                }
+
+                const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${cleanApiKey}`;
+                
+                const systemPrompt = `Bạn là chuyên viên tư vấn sành sỏi tại hệ thống phân phối FStore.
+                Dưới đây là danh sách sản phẩm thực tế đang có trong kho dữ liệu:\n${currentContext}\n
+                Nhiệm vụ:
+                1. Tư vấn thân thiện, xưng 'Mình' và gọi khách là 'Bạn'. Trả lời cực kỳ ngắn gọn.
+                2. Bắt buộc nhớ ngữ cảnh cuộc trò chuyện. Nếu khách hỏi "điện thoại này", hãy đối chiếu với sản phẩm bạn vừa nhắc đến ở câu trước.
+                3. NẾU KHÁCH HỎI THÔNG SỐ SẢN PHẨM: Bắt buộc trình bày mỗi thông số trên 1 dòng riêng biệt, bắt đầu bằng dấu gạch ngang.
+                4. KHI ĐỀ XUẤT SẢN PHẨM: BẮT BUỘC chỉ được viết kèm cấu trúc [link:MÃ_ID_CỦA_SẢN_PHẨM]. Không tự ý thiết kế HTML.`;
+
+                chatHistory.push({ role: "user", parts: [{ text: userText }] });
+                sessionStorage.setItem('fstore_ai_history', JSON.stringify(chatHistory)); 
+
+                try {
+                    const response = await fetch(URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            contents: chatHistory.slice(-4) 
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.candidates && data.candidates.length > 0) {
+                        const aiResponse = data.candidates[0].content.parts[0].text;
+                        
+                        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                        sessionStorage.setItem('fstore_ai_history', JSON.stringify(chatHistory));
+
+                        appendMessage(aiResponse, 'bot');
+                    } else {
+                        chatHistory.pop();
+                        sessionStorage.setItem('fstore_ai_history', JSON.stringify(chatHistory)); 
+                        console.error("Chi tiết lỗi từ Google:", data);
+                        
+                        if(data.error?.code === 400 || data.error?.code === 403 || data.error?.code === 404) {
+                            appendMessage(`Lỗi API: Có thể API Key của bạn không hợp lệ hoặc chưa được cấp quyền. Vui lòng tạo Key mới bắt đầu bằng AIzaSy... trên Google AI Studio.`, 'bot');
+                        } else {
+                            appendMessage(`Lỗi hệ thống: ${data.error?.message || "Không phản hồi"}`, 'bot');
+                        }
+                    }
+                } catch (error) {
+                    chatHistory.pop();
+                    sessionStorage.setItem('fstore_ai_history', JSON.stringify(chatHistory));
+                    console.error("Lỗi mạng:", error);
+                    appendMessage("Mất kết nối mạng đến máy chủ AI.", 'bot');
+                }
+            };
+
+            const sendMessage = () => {
+                const text = chatInput.value.trim();
+                if (!text) return;
+                
+                appendMessage(text, 'user');
+                chatInput.value = '';
+                chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+
+                appendMessage("Đang phân tích...", 'bot');
+                
+                setTimeout(() => {
+                    chatBody.lastChild.remove(); 
+                    if(!API_KEY || API_KEY.length < 10) {
+                        appendMessage("Vui lòng dán khóa API hợp lệ vào code.", 'bot');
+                    } else {
+                        callGeminiAPI(text);
+                    }
+                }, 600);
+            };
+
+            if(sendChatBtn) sendChatBtn.addEventListener('click', sendMessage);
+            if(chatInput) chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        });
+    </script>
+
     <script type="module" src="./controllers/headerController.js"></script>
     <script type="module" src="./controllers/productController.js"></script>
     <div id="footer-placeholder"></div>
-
     <script src="./controllers/loadComponents.js"></script>
 </body>
 </html>

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (glowVideo && mainVideo) {
             mainVideo.addEventListener('playing', () => {
                 glowVideo.currentTime = mainVideo.currentTime;
-                glowVideo.play().catch(e => console.log("Glow video play blocked:", e));
+                glowVideo.play().catch(() => {});
             });
 
             mainVideo.addEventListener('pause', () => glowVideo.pause());
@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (docSnap.exists()) {
                 currentProduct = docSnap.data();
+                currentProduct.id = docSnap.id;
                 if (!currentProduct.variants || currentProduct.variants.length === 0) return;
 
                 selectedVariant = currentProduct.variants[0];
@@ -163,9 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (productPopover) productPopover.classList.add('active');
             }
-        } catch (error) {
-            console.error("Lỗi khi mở sản phẩm:", error);
-        }
+        } catch (error) {}
     };
 
     document.addEventListener('click', async (e) => {
@@ -181,7 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const q = query(collection(db, "products"), where("categoryId", "==", categoryId));
             const snapshot = await getDocs(q);
             const products = [];
-            snapshot.forEach(doc => products.push(doc.data()));
+            snapshot.forEach(doc => {
+                products.push({ id: doc.id, ...doc.data() });
+            });
 
             renderProducts(products, categoryName);
         }
@@ -299,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
             productPopover.classList.remove('active');
         });
     }
+
     const saveItemBtn = document.getElementById('saveItemBtn');
     
     const checkSavedStatus = () => {
@@ -356,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     const removeAccents = (str) => {
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
     };
@@ -369,7 +372,79 @@ document.addEventListener('DOMContentLoaded', () => {
         return patternIdx === pattern.length;
     };
 
-    if (searchInput) {
+    if (searchInput && searchBarContainer) {
+        const suggestionBox = document.createElement('div');
+        suggestionBox.className = 'search-suggestions';
+        searchBarContainer.appendChild(suggestionBox);
+
+        let allProductsForSearch = [];
+        const loadProductsForSearch = async () => {
+            try {
+                const snapshot = await getDocs(collection(db, "products"));
+                snapshot.forEach(doc => {
+                    allProductsForSearch.push({ id: doc.id, ...doc.data() });
+                });
+            } catch (error) {}
+        };
+        loadProductsForSearch();
+
+        searchInput.addEventListener('input', (e) => {
+            const rawKeyword = e.target.value.trim();
+            if (!rawKeyword) {
+                suggestionBox.classList.remove('show');
+                return;
+            }
+            const searchKeyword = removeAccents(rawKeyword.toLowerCase());
+            
+            const filteredProducts = allProductsForSearch.filter(p => {
+                const normalizedProductName = removeAccents(p.name.toLowerCase());
+                return normalizedProductName.includes(searchKeyword) || fuzzyMatch(searchKeyword, normalizedProductName);
+            });
+
+            if (filteredProducts.length === 0) {
+                suggestionBox.innerHTML = '<div class="suggest-empty">Không tìm thấy sản phẩm nào phù hợp...</div>';
+            } else {
+                const top5Products = filteredProducts.slice(0, 5);
+                suggestionBox.innerHTML = top5Products.map(p => {
+                    const defaultVariant = (p.variants && p.variants.length > 0) ? p.variants[0] : {};
+                    const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (defaultVariant.image || "https://via.placeholder.com/45");
+                    const price = defaultVariant.price || p.basePrice || 0;
+                    
+                    return `
+                        <div class="suggest-item" data-id="${p.id}">
+                            <img src="${imgUrl}" alt="${p.name}">
+                            <div class="suggest-info">
+                                <h4>${p.name}</h4>
+                                <p>${formatPrice(price)}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            suggestionBox.classList.add('show');
+        });
+
+        suggestionBox.addEventListener('click', (e) => {
+            const clickedItem = e.target.closest('.suggest-item');
+            if (clickedItem) {
+                const productId = clickedItem.getAttribute('data-id');
+                const path = window.location.pathname.toLowerCase();
+                const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
+                
+                searchBarContainer.classList.remove('active');
+                if(pageOverlay) pageOverlay.classList.remove('show');
+                suggestionBox.classList.remove('show');
+                searchInput.value = '';
+
+                if (isHomePage) {
+                    openPopover(productId);
+                } else {
+                    localStorage.setItem('pendingProductOpen', productId);
+                    window.location.href = 'index.html';
+                }
+            }
+        });
+
         searchInput.addEventListener('keypress', async (e) => {
             if (e.key === 'Enter') {
                 const rawKeyword = searchInput.value.trim();
@@ -377,25 +452,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (searchBarContainer) searchBarContainer.classList.remove('active');
                 if (pageOverlay) pageOverlay.classList.remove('show');
+                suggestionBox.classList.remove('show');
                 searchInput.value = '';
 
                 const searchKeyword = removeAccents(rawKeyword.toLowerCase());
-
-                try {
-                    const snapshot = await getDocs(collection(db, "products"));
-                    const products = [];
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const normalizedProductName = removeAccents(data.name.toLowerCase());
-                        if (fuzzyMatch(searchKeyword, normalizedProductName)) {
-                            products.push(data);
-                        }
-                    });
-                    renderProducts(products, `Kết quả tìm kiếm cho: "${rawKeyword}"`);
-                } catch (error) {
-                    console.error("Lỗi khi tìm kiếm:", error);
-                }
+                const products = allProductsForSearch.filter(p => {
+                    const normalizedProductName = removeAccents(p.name.toLowerCase());
+                    return fuzzyMatch(searchKeyword, normalizedProductName) || normalizedProductName.includes(searchKeyword);
+                });
+                
+                renderProducts(products, `Kết quả tìm kiếm cho: "${rawKeyword}"`);
             }
         });
     }
@@ -403,8 +469,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(async () => {
         const pendingCategory = localStorage.getItem('pendingCategoryLoad');
         const pendingSearch = localStorage.getItem('pendingSearchKeyword');
+        const pendingProductOpen = localStorage.getItem('pendingProductOpen');
         
-        if (pendingCategory) {
+        if (pendingProductOpen) {
+            localStorage.removeItem('pendingProductOpen');
+            openPopover(pendingProductOpen);
+        } else if (pendingCategory) {
             try {
                 const { id, name } = JSON.parse(pendingCategory);
                 localStorage.removeItem('pendingCategoryLoad'); 
@@ -417,12 +487,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const q = query(collection(db, "products"), where("categoryId", "==", id));
                 const snapshot = await getDocs(q);
                 const products = [];
-                snapshot.forEach(doc => products.push(doc.data()));
+                snapshot.forEach(doc => {
+                    products.push({ id: doc.id, ...doc.data() });
+                });
                 
                 renderProducts(products, name);
-            } catch (error) {
-                console.error("Lỗi tự động load danh mục:", error);
-            }
+            } catch (error) {}
         } 
         else if (pendingSearch) {
             try {
@@ -439,26 +509,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const normalizedProductName = removeAccents(data.name.toLowerCase());
-                    if (fuzzyMatch(searchKeyword, normalizedProductName)) {
-                        products.push(data);
+                    if (fuzzyMatch(searchKeyword, normalizedProductName) || normalizedProductName.includes(searchKeyword)) {
+                        products.push({ id: doc.id, ...data });
                     }
                 });
 
                 renderProducts(products, `Kết quả tìm kiếm cho: "${pendingSearch}"`);
-            } catch (error) {
-                console.error("Lỗi tự động load tìm kiếm:", error);
-            }
+            } catch (error) {}
         }
     }, 300);
 
-});  
-
-
-
-
-
-
-
-
-
-
+});

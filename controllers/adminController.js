@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
     
-    // HÀM FOMAT THỜI GIAN TỪ FIREBASE
     const formatDate = (timestamp) => {
         if (!timestamp) return "Không rõ thời gian";
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -97,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         renderProductsTable(filterSelect ? filterSelect.value : "all");
 
-        // LẤY DỮ LIỆU ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
         ordersList = [];
         let totalRev = 0;
@@ -112,10 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('statOrders').innerText = ordersList.length;
         document.getElementById('statRevenue').innerText = formatPrice(totalRev);
         
-        // Gọi hàm render bảng đơn hàng có chức năng sắp xếp
         renderOrdersTable();
 
-        // Bắt sự kiện khi Admin đổi kiểu sắp xếp
         const sortOrderSelect = document.getElementById('sortOrderSelect');
         if (sortOrderSelect) {
             sortOrderSelect.addEventListener('change', renderOrdersTable);
@@ -143,20 +139,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // HÀM RENDER BẢNG ĐƠN HÀNG (CÓ SẮP XẾP)
+    
     const renderOrdersTable = () => {
         const sortVal = document.getElementById('sortOrderSelect')?.value || 'newest';
         
-        // Clone mảng để không ảnh hưởng đến dữ liệu gốc
         let sortedOrders = [...ordersList];
         
-        // Sắp xếp
         sortedOrders.sort((a, b) => {
             const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt).getTime() || 0);
             const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt).getTime() || 0);
             
-            if (sortVal === 'newest') return timeB - timeA; // Mới nhất lên đầu
-            return timeA - timeB; // Cũ nhất lên đầu
+            if (sortVal === 'newest') return timeB - timeA; 
+            return timeA - timeB; 
         });
 
         let orderHtml = '';

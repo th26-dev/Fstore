@@ -173,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutBtn.disabled = true;
 
         try {
-            // 1. TỰ TẠO MÃ ĐƠN HÀNG ĐỒNG NHẤT
             const orderId = "FSTORE_" + Date.now();
 
             const newOrder = {
@@ -185,13 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
-            // 2. ÉP FIREBASE LƯU ĐÚNG MÃ ORDER ID NÀY
             await setDoc(doc(db, "orders", orderId), newOrder);
 
-            // 3. XÓA GIỎ HÀNG
             localStorage.removeItem(`cart_${userId}`);
 
-            // 4. GỬI ĐÚNG MÃ ĐÓ SANG BACKEND
             const response = await fetch('/api/pay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

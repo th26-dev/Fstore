@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ đồ Test Scenario - FStore</title>
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#ffffff',
+                primaryTextColor: '#1d1d1f',
+                primaryBorderColor: '#0071e3',
+                lineColor: '#a1a1a6',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            },
+            flowchart: {
+                curve: 'smooth'
+            }
+        });
+    </script>
+
+    <style>
+        body {
+            background-color: #f5f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 40px 60px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 1400px;
+            overflow-x: auto;
+            text-align: center;
+        }
+        h1 {
+            color: #1d1d1f;
+            margin-bottom: 10px;
+        }
+        .instruction {
+            color: #86868b;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        /* CSS cho nút tải ảnh */
+        .btn-download {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 10px rgba(0, 113, 227, 0.3);
+        }
+        .btn-download:hover {
+            background-color: #005bb5;
+            transform: translateY(-2px);
+        }
+        .btn-download:active {
+            transform: translateY(0);
+        }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Sơ Đồ Phân Rã Kịch Bản Kiểm Thử (Test Scenarios)</h1>
+        <p class="instruction">Đã tích hợp công cụ xuất ảnh Vector độ phân giải cao cho báo cáo Word.</p>
+        
+        <button id="btnDownload" class="btn-download">
+            ⬇️ Tải ảnh sơ đồ (PNG Nét Cao)
+        </button>
+
+        <div class="mermaid" id="diagramContainer">
+            graph LR
+            %% Khối Gốc (Root)
+            ROOT[("<b>HỆ THỐNG THƯƠNG MẠI<br>ĐIỆN TỬ FSTORE</b>")]
+            
+            %% Các Module chính
+            M1("<b>1. Xác thực (Auth)</b>")
+            M2("<b>2. Điều hướng & Tìm kiếm</b>")
+            M3("<b>3. Sản phẩm</b>")
+            M4("<b>4. Giỏ hàng & Thanh toán</b>")
+            M5("<b>5. Lịch sử Đơn hàng</b>")
+            M6("<b>6. Quản trị viên (Admin)</b>")
+            
+            %% Kết nối Root tới các Module
+            ROOT ==> M1
+            ROOT ==> M2
+            ROOT ==> M3
+            ROOT ==> M4
+            ROOT ==> M5
+            ROOT ==> M6
+            
+            %% Kịch bản Xác thực
+            M1 --> TS_A1["TS_AUTH_01: Kiểm tra giao diện & hiệu ứng Form"]
+            M1 --> TS_A2["TS_AUTH_02: Xác minh luồng Đăng nhập"]
+            M1 --> TS_A3["TS_AUTH_03: Xác minh luồng Đăng ký & mã OTP"]
+            
+            %% Kịch bản Điều hướng
+            M2 --> TS_N1["TS_NAV_01: Kiểm tra UI Header & Mega Menu"]
+            M2 --> TS_N2["TS_NAV_02: Xác minh chức năng Tìm kiếm sản phẩm"]
+            
+            %% Kịch bản Sản phẩm
+            M3 --> TS_P1["TS_PROD_01: Hiển thị danh sách & Chi tiết (Popover)"]
+            M3 --> TS_P2["TS_PROD_02: Tương tác biến thể (Màu sắc, Dung lượng)"]
+            M3 --> TS_P3["TS_PROD_03: Luồng thêm Giỏ hàng & Animation"]
+            
+            %% Kịch bản Giỏ hàng & TT
+            M4 --> TS_C1["TS_CART_01: Quản lý tính toán tổng tiền Giỏ hàng"]
+            M4 --> TS_C2["TS_CART_02: Tích hợp Bản đồ chọn địa chỉ (Leaflet)"]
+            M4 --> TS_C3["TS_CART_03: Luồng thanh toán qua cổng MoMo"]
+            
+            %% Kịch bản Đơn hàng
+            M5 --> TS_O1["TS_ORD_01: Kiểm tra phân quyền truy cập lịch sử"]
+            M5 --> TS_O2["TS_ORD_02: Trạng thái & Sắp xếp thời gian hiển thị"]
+            
+            %% Kịch bản Admin
+            M6 --> TS_AD1["TS_ADM_01: Thống kê tổng quan & Biểu đồ Chart.js"]
+            M6 --> TS_AD2["TS_ADM_02: Quản lý Danh mục (CRUD)"]
+            M6 --> TS_AD3["TS_ADM_03: Quản lý Sản phẩm & Cập nhật Đơn hàng"]
+            
+            %% Tùy chỉnh màu sắc cho các khối
+            style ROOT fill:#0071e3,color:#fff,stroke:#005bb5,stroke-width:4px
+            
+            style M1 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+            style M2 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+            style M3 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+            style M4 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+            style M5 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+            style M6 fill:#e8f0fe,stroke:#0071e3,stroke-width:2px,color:#0071e3
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btnDownload').addEventListener('click', function() {
+            const svg = document.querySelector('.mermaid svg');
+            if (!svg) {
+                alert('Sơ đồ đang được vẽ, vui lòng đợi 1 giây rồi bấm lại nhé!');
+                return;
+            }
+
+            // Đổi text nút thành Đang xử lý
+            const btn = document.getElementById('btnDownload');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Đang xuất ảnh độ nét cao...";
+
+            // Clone SVG ra để chỉnh sửa mà không làm hỏng giao diện
+            const clonedSvg = svg.cloneNode(true);
+            
+            // Xóa max-width để ép render kích thước thực, set nền trắng
+            clonedSvg.style.maxWidth = 'none';
+            clonedSvg.style.backgroundColor = '#ffffff';
+            
+            // Lấy dữ liệu SVG và convert lỗi Tiếng Việt (UTF-8)
+            const xmlSerializer = new XMLSerializer();
+            const svgData = xmlSerializer.serializeToString(clonedSvg);
+            const base64Data = btoa(unescape(encodeURIComponent(svgData)));
+            
+            const img = new Image();
+            img.src = 'data:image/svg+xml;base64,' + base64Data;
+
+            img.onload = function() {
+                // Tạo thẻ canvas để vẽ ảnh. Nhân 3 kích thước để có độ phân giải siêu nét (3x Scale)
+                const canvas = document.createElement('canvas');
+                const scale = 3; 
+                canvas.width = svg.getBoundingClientRect().width * scale;
+                canvas.height = svg.getBoundingClientRect().height * scale;
+                
+                const ctx = canvas.getContext('2d');
+                // Phủ nền trắng (Tránh ảnh PNG bị trong suốt nền đen trong Word)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Vẽ ảnh lên canvas với kích thước nhân 3
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // Xuất file PNG
+                const a = document.createElement('a');
+                a.download = 'FStore_Test_Scenarios_Hires.png';
+                a.href = canvas.toDataURL('image/png');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // Trả lại nút ban đầu
+                btn.innerText = originalText;
+            };
+        });
+    </script>
+</body>
+</html>
