@@ -213,8 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Gom tên sản phẩm lại làm mô tả cho ZaloPay
                 const orderInfo = cartData.map(item => item.name).join(', ');
                 
-                // Lưu ý: Thay "http://localhost:3000/create-payment" bằng link server Backend ZaloPay thật của bạn
-                const response = await fetch('http://localhost:3000/create-payment', {
+                const response = await fetch('/api/zalopay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
