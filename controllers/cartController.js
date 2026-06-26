@@ -1,6 +1,5 @@
 import { auth, db } from '../models/firebaseConfig.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// Đã thay đổi import để dùng doc và setDoc
 import { collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -167,6 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Lấy phương thức thanh toán người dùng đang tick chọn
+        const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
         const totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
         
         checkoutBtn.innerText = "Đang xử lý...";
@@ -181,26 +182,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalAmount: totalAmount, 
                 deliveryAddress: finalAddress, 
                 status: "Chờ thanh toán",
+                paymentMethod: selectedPayment, // Lưu lại phương thức khách chọn vào hóa đơn
                 createdAt: new Date()
             };
             
             await setDoc(doc(db, "orders", orderId), newOrder);
-
             localStorage.removeItem(`cart_${userId}`);
 
-            const response = await fetch('/api/pay', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: totalAmount, orderId: orderId })
-            });
+            // ==========================================
+            // PHÂN LUỒNG XỬ LÝ THANH TOÁN
+            // ==========================================
+            if (selectedPayment === 'momo') {
+                // 1. LUỒNG MOMO: Hoàn toàn giữ nguyên không thay đổi một dấu phẩy
+                const response = await fetch('/api/pay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                });
 
-            const data = await response.json();
+                const data = await response.json();
 
-            if (data.url) {
-                window.location.href = data.url; 
+                if (data.url) {
+                    window.location.href = data.url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+                }
+
+            } else if (selectedPayment === 'zalopay') {
+                // 2. LUỒNG ZALOPAY: Logic mới được bổ sung
+                // Gom tên sản phẩm lại làm mô tả cho ZaloPay
+                const orderInfo = cartData.map(item => item.name).join(', ');
+                
+                // Lưu ý: Thay "http://localhost:3000/create-payment" bằng link server Backend ZaloPay thật của bạn
+                const response = await fetch('http://localhost:3000/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: totalAmount, 
+                        orderInfo: orderInfo, 
+                        orderId: orderId 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.order_url) {
+                    window.location.href = data.order_url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                }
+                
             } else {
-                throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+                // Các phương thức khác (VNPay...) chưa cấu hình
+                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerText = "Thanh Toán";
             }
+
         } catch (error) {
             checkoutMsg.style.display = "block";
             checkoutMsg.innerText = error.message;
