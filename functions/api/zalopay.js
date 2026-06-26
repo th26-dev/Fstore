@@ -29,8 +29,8 @@ export async function onRequest(context) {
         const item = JSON.stringify([{ itemname: orderInfo, itemprice: amount }]);
         
         const embed_data = JSON.stringify({ 
-            redirecturl: `${domain}/thanh-toan-thanh-cong.html` 
-        }); 
+            redirecturl: `${domain}/orders.html` 
+        });
 
         const dataString = `${appId}|${app_trans_id}|FStore_User|${amount}|${app_time}|${embed_data}|${item}`;
 

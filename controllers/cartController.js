@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             } else if (selectedPayment === 'zalopay') {
+                localStorage.setItem('pending_zalopay_order_id', orderId);
                 const orderInfo = cartData.map(item => item.name).join(', ');
                 
                 const response = await fetch('/api/zalopay', {

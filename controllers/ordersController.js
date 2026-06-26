@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
     };
 
+    // 1. Hàm kiểm tra kết quả trả về từ MoMo
     const checkMoMoPaymentResult = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const pendingOrderId = localStorage.getItem('pending_momo_order_id');
@@ -25,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             try {
                 if (resultCode === '0') {
-                    // Cập nhật trạng thái thành "Đã thanh toán" khi giao dịch thành công
                     await updateDoc(orderRef, { status: "Đã thanh toán" });
                 } else {
                     await updateDoc(orderRef, { status: "Đã hủy" });
@@ -35,7 +35,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             localStorage.removeItem('pending_momo_order_id');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    };
+
+    // 2. 🌟 Hàm kiểm tra kết quả trả về từ ZaloPay (MỚI THÊM)
+    const checkZaloPayPaymentResult = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pendingOrderId = localStorage.getItem('pending_zalopay_order_id');
+        
+        // ZaloPay dùng tham số 'status' (1 là thành công, khác 1 là thất bại/hủy)
+        if (pendingOrderId && urlParams.has('status')) {
+            const status = urlParams.get('status');
+            const orderRef = doc(db, "orders", pendingOrderId);
             
+            try {
+                if (status === '1') {
+                    await updateDoc(orderRef, { status: "Đã thanh toán" });
+                } else {
+                    await updateDoc(orderRef, { status: "Đã hủy" });
+                }
+            } catch (error) {
+                console.error("Lỗi cập nhật trạng thái đơn hàng từ ZaloPay: ", error);
+            }
+            
+            localStorage.removeItem('pending_zalopay_order_id');
+            // Xóa URL rác sau khi xử lý xong
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
@@ -46,7 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Chạy đồng thời 2 hàm quét URL lúc vừa load trang
         await checkMoMoPaymentResult();
+        await checkZaloPayPaymentResult();
 
         try {
             const q = query(collection(db, "orders"), where("userId", "==", user.uid));
@@ -82,11 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let statusClass = "status-pending";
                 let statusText = order.status || "Chờ thanh toán";
                 
-                if (statusText === "Chờ duyệt" || statusText === "Chờ thanh toán") statusClass = "status-pending"; // Màu vàng
-                if (statusText === "Đang giao" || statusText === "Shipped") statusClass = "status-shipping"; // Màu xanh dương
-                // Bổ sung "Đã thanh toán" vào nhóm màu xanh lá
+                if (statusText === "Chờ duyệt" || statusText === "Chờ thanh toán") statusClass = "status-pending"; 
+                if (statusText === "Đang giao" || statusText === "Shipped") statusClass = "status-shipping"; 
                 if (statusText === "Đã thanh toán" || statusText === "Hoàn thành" || statusText === "Completed") statusClass = "status-completed"; 
-                if (statusText === "Đã hủy" || statusText === "Cancelled") statusClass = "status-cancelled"; // Màu đỏ
+                if (statusText === "Đã hủy" || statusText === "Cancelled") statusClass = "status-cancelled"; 
 
                 let itemsHtml = '';
                 if (order.items && order.items.length > 0) {
@@ -108,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `<p style="margin-top: 8px; font-weight: 500; color: #1d1d1f;"><i class="fa-solid fa-location-dot" style="color: #0071e3; margin-right: 5px;"></i> ${order.deliveryAddress}</p>` 
                     : `<p style="margin-top: 8px; font-style: italic; color: #86868b;">Chưa cập nhật địa chỉ giao hàng</p>`;
 
-                // Đọc phương thức thanh toán từ DB và hiển thị
                 let paymentMethodName = "Không xác định";
                 if (order.paymentMethod === "momo") paymentMethodName = "Ví MoMo";
                 else if (order.paymentMethod === "zalopay") paymentMethodName = "ZaloPay";
