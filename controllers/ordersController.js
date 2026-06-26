@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="order-card">
                         <div class="order-header">
                             <div class="order-info" style="flex: 1; padding-right: 15px;">
-                                <h3>Mã đơn: #${order.orderId || order.docId.substring(0,8).toUpperCase()}</h3>
+                                <h3>Mã đơn: #${order.orderId || order.docId}</h3>
                                 <p>Ngày đặt: ${formatDate(order.createdAt)}</p>
                                 ${addressHTML}
                                 ${paymentHTML}
