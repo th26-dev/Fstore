@@ -166,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Lấy phương thức thanh toán người dùng đang tick chọn
         const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
         const totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
         
@@ -182,18 +181,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalAmount: totalAmount, 
                 deliveryAddress: finalAddress, 
                 status: "Chờ thanh toán",
-                paymentMethod: selectedPayment, // Lưu lại phương thức khách chọn vào hóa đơn
+                paymentMethod: selectedPayment, 
                 createdAt: new Date()
             };
             
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // ==========================================
-            // PHÂN LUỒNG XỬ LÝ THANH TOÁN
-            // ==========================================
             if (selectedPayment === 'momo') {
-                // 1. LUỒNG MOMO: Hoàn toàn giữ nguyên không thay đổi một dấu phẩy
                 const response = await fetch('/api/pay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -209,8 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             } else if (selectedPayment === 'zalopay') {
-                // 2. LUỒNG ZALOPAY: Logic mới được bổ sung
-                // Gom tên sản phẩm lại làm mô tả cho ZaloPay
                 const orderInfo = cartData.map(item => item.name).join(', ');
                 
                 const response = await fetch('/api/zalopay', {
@@ -232,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
             } else {
-                // Các phương thức khác (VNPay...) chưa cấu hình
                 alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerText = "Thanh Toán";

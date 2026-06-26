@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             try {
                 if (resultCode === '0') {
-                    await updateDoc(orderRef, { status: "Chờ duyệt" });
+                    // Cập nhật trạng thái thành "Đã thanh toán" khi giao dịch thành công
+                    await updateDoc(orderRef, { status: "Đã thanh toán" });
                 } else {
                     await updateDoc(orderRef, { status: "Đã hủy" });
                 }
@@ -81,9 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let statusClass = "status-pending";
                 let statusText = order.status || "Chờ thanh toán";
                 
-                if (statusText === "Chờ duyệt") statusClass = "status-pending"; // Màu vàng
+                if (statusText === "Chờ duyệt" || statusText === "Chờ thanh toán") statusClass = "status-pending"; // Màu vàng
                 if (statusText === "Đang giao" || statusText === "Shipped") statusClass = "status-shipping"; // Màu xanh dương
-                if (statusText === "Hoàn thành" || statusText === "Completed") statusClass = "status-completed"; // Màu xanh lá
+                // Bổ sung "Đã thanh toán" vào nhóm màu xanh lá
+                if (statusText === "Đã thanh toán" || statusText === "Hoàn thành" || statusText === "Completed") statusClass = "status-completed"; 
                 if (statusText === "Đã hủy" || statusText === "Cancelled") statusClass = "status-cancelled"; // Màu đỏ
 
                 let itemsHtml = '';
@@ -106,13 +108,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `<p style="margin-top: 8px; font-weight: 500; color: #1d1d1f;"><i class="fa-solid fa-location-dot" style="color: #0071e3; margin-right: 5px;"></i> ${order.deliveryAddress}</p>` 
                     : `<p style="margin-top: 8px; font-style: italic; color: #86868b;">Chưa cập nhật địa chỉ giao hàng</p>`;
 
+                // Đọc phương thức thanh toán từ DB và hiển thị
+                let paymentMethodName = "Không xác định";
+                if (order.paymentMethod === "momo") paymentMethodName = "Ví MoMo";
+                else if (order.paymentMethod === "zalopay") paymentMethodName = "ZaloPay";
+                else if (order.paymentMethod === "vnpay") paymentMethodName = "VNPay";
+                else if (order.paymentMethod === "cod") paymentMethodName = "Thanh toán khi nhận hàng (COD)";
+
+                const paymentHTML = `<p style="margin-top: 4px; font-size: 14px; color: #86868b;"><i class="fa-solid fa-credit-card" style="margin-right: 5px;"></i> Phương thức thanh toán: <strong style="color: #1d1d1f;">${paymentMethodName}</strong></p>`;
+
                 html += `
                     <div class="order-card">
                         <div class="order-header">
                             <div class="order-info" style="flex: 1; padding-right: 15px;">
                                 <h3>Mã đơn: #${order.orderId || order.docId.substring(0,8).toUpperCase()}</h3>
                                 <p>Ngày đặt: ${formatDate(order.createdAt)}</p>
-                                ${addressHTML} </div>
+                                ${addressHTML}
+                                ${paymentHTML}
+                            </div>
                             <div class="order-status ${statusClass}">${statusText}</div>
                         </div>
                         
