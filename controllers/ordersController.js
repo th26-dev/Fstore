@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
     };
 
-    // 1. Hàm kiểm tra kết quả trả về từ MoMo
     const checkMoMoPaymentResult = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const pendingOrderId = localStorage.getItem('pending_momo_order_id');
@@ -39,12 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 2. 🌟 Hàm kiểm tra kết quả trả về từ ZaloPay (MỚI THÊM)
     const checkZaloPayPaymentResult = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const pendingOrderId = localStorage.getItem('pending_zalopay_order_id');
         
-        // ZaloPay dùng tham số 'status' (1 là thành công, khác 1 là thất bại/hủy)
         if (pendingOrderId && urlParams.has('status')) {
             const status = urlParams.get('status');
             const orderRef = doc(db, "orders", pendingOrderId);
@@ -60,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             localStorage.removeItem('pending_zalopay_order_id');
-            // Xóa URL rác sau khi xử lý xong
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
@@ -71,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Chạy đồng thời 2 hàm quét URL lúc vừa load trang
         await checkMoMoPaymentResult();
         await checkZaloPayPaymentResult();
 

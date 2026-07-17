@@ -5,42 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FStore - Cửa Hàng Nước Giải Khát</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">    
-    <link rel="stylesheet" href="./assets/css/style.css">
-    <link rel="stylesheet" href="./assets/css/header.css">
-    <link rel="stylesheet" href="./assets/css/home.css">
-    <link rel="stylesheet" href="./assets/css/product.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/header.css">
+    <link rel="stylesheet" href="/assets/css/home.css">
+    <link rel="stylesheet" href="/assets/css/product.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* CSS CHATBOT AI FSTORE (LIQUID & IMESSAGE) */
+        #landingPage { padding-bottom: 0 !important; }
+        #landingPage .landing-section:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+
+        .explore-brands-section {
+            margin-top: 0 !important; padding-top: 40px; background-color: #ffffff;
+            padding: 80px 20px 100px 20px; text-align: center; overflow: hidden; 
+        }
+
+        .explore-brands-title {
+            font-size: 24px; color: #333; margin-bottom: 60px; text-transform: uppercase;
+            font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #5fa62a; 
+            display: inline-block; padding-bottom: 10px;
+        }
+
+        .fstore-showcase {
+            display: flex; justify-content: center; align-items: center; gap: 15px; 
+            height: 480px; max-width: 1200px; margin: 0 auto;
+        }
+
+        .bottle-wrapper {
+            position: relative; cursor: pointer; transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .bottle-wrapper img {
+            width: auto; object-fit: contain; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.1));
+            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 80%, rgba(255,255,255,0.4));
+        }
+
+        .bottle-wrapper:nth-child(1) img, .bottle-wrapper:nth-child(13) img { height: 110px; }
+        .bottle-wrapper:nth-child(2) img, .bottle-wrapper:nth-child(12) img { height: 140px; }
+        .bottle-wrapper:nth-child(3) img, .bottle-wrapper:nth-child(11) img { height: 170px; }
+        .bottle-wrapper:nth-child(4) img, .bottle-wrapper:nth-child(10) img { height: 210px; }
+        .bottle-wrapper:nth-child(5) img, .bottle-wrapper:nth-child(9) img { height: 260px; }
+        .bottle-wrapper:nth-child(6) img, .bottle-wrapper:nth-child(8) img { height: 320px; }
+        .bottle-wrapper:nth-child(7) img { height: 380px; }
+        
+        .bottle-tooltip {
+            position: absolute; top: 40%; right: -20px; background-color: rgba(30, 30, 30, 0.9);
+            color: #fff; padding: 4px 10px; font-size: 13px; font-weight: 500; border-radius: 2px;
+            opacity: 0; visibility: hidden; transition: 0.3s; pointer-events: none;
+            white-space: nowrap; z-index: 20;
+        }
+
+        .bottle-wrapper:hover { margin: 0 45px; z-index: 10; }
+        .bottle-wrapper:hover img { transform: scale(1.25); filter: drop-shadow(0px 20px 15px rgba(0,0,0,0.25)); }
+        .bottle-wrapper:hover .bottle-tooltip { opacity: 1; visibility: visible; transform: translateX(15px); }
+        .fstore-showcase:hover .bottle-wrapper:not(:hover) img { opacity: 0.6; transform: scale(0.9); }
+        
         .ai-chat-btn {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
-            background: #0071e3; color: white; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 24px; box-shadow: 0 10px 20px rgba(0, 113, 227, 0.3);
-            cursor: pointer; z-index: 9999; transition: transform 0.3s ease;
+            background: #0071e3; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; box-shadow: 0 10px 20px rgba(0, 113, 227, 0.3); cursor: pointer; z-index: 9999; transition: transform 0.3s ease;
         }
         .ai-chat-btn:hover { transform: scale(1.1); }
         
         .ai-chat-window {
             position: fixed; bottom: 100px; right: 30px; width: 360px; height: 550px;
             background: rgba(255, 255, 255, 0.95); backdrop-filter: saturate(180%) blur(20px);
-            -webkit-backdrop-filter: saturate(180%) blur(20px); 
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.05);
-            display: flex; flex-direction: column; z-index: 9999;
-            
-            /* TRẠNG THÁI ĐÓNG (GIỌT NƯỚC) */
-            opacity: 0; visibility: hidden;
-            transform-origin: bottom right;
-            transform: scale(0.2) translateY(50px);
-            border-radius: 50% 50% 5% 50%;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; z-index: 9999; opacity: 0; visibility: hidden;
+            transform-origin: bottom right; transform: scale(0.2) translateY(50px);
+            border-radius: 50% 50% 5% 50%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .ai-chat-window.active { 
-            visibility: visible; 
-            animation: liquidDropOpen 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
+        .ai-chat-window.active { visibility: visible; animation: liquidDropOpen 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
         @keyframes liquidDropOpen {
             0% { opacity: 0; transform: scale(0.2) translateY(50px); border-radius: 50% 50% 5% 50%; }
@@ -50,8 +88,7 @@
         }
 
         .chat-header {
-            padding: 15px 20px; background: #f5f5f7; border-radius: 20px 20px 0 0;
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: #f5f5f7; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;
             font-weight: 600; color: #1d1d1f; border-bottom: 1px solid #d2d2d7;
         }
         #close-chat-btn { cursor: pointer; color: #86868b; transition: 0.3s; }
@@ -66,40 +103,120 @@
         #send-chat-btn { background: #0071e3; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: 0.3s; }
         #send-chat-btn:hover { background: #0077ed; }
 
-        /* HIỆU ỨNG TIN NHẮN TRƯỢT iMESSAGE */
         @keyframes iMessageSlideUp {
             0% { opacity: 0; transform: translateY(20px) scale(0.95); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         .chat-message { 
-            max-width: 85%; padding: 12px 16px; border-radius: 18px; 
-            font-size: 14px; line-height: 1.5; word-wrap: break-word;
+            max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; word-wrap: break-word;
             animation: iMessageSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; 
         }
         .bot-msg { background: #f5f5f7; color: #1d1d1f; align-self: flex-start; border-bottom-left-radius: 4px; }
         .user-msg { background: #0071e3; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
 
-        /* GIAO DIỆN THẺ SẢN PHẨM TRONG CHAT */
         .ai-product-card {
-            display: flex; gap: 12px; align-items: center;
-            background: #ffffff; border: 1px solid #e5e5ea; border-radius: 12px;
-            padding: 10px; margin-top: 8px; margin-bottom: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex; gap: 12px; align-items: center; background: #ffffff; border: 1px solid #e5e5ea; border-radius: 12px;
+            padding: 10px; margin-top: 8px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
-        .ai-product-card img {
-            width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #f5f5f7;
-        }
+        .ai-product-card img { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #f5f5f7; }
         .ai-product-info { flex: 1; }
         .ai-product-info h4 { margin: 0 0 4px 0; font-size: 13px; color: #1d1d1f; line-height: 1.2;}
         .ai-product-info p { margin: 0 0 8px 0; font-size: 13px; color: #ff3b30; font-weight: 600; }
         .ai-product-btn {
-            background: #0071e3; color: white; border: none; border-radius: 14px;
-            padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
+            background: #0071e3; color: white; border: none; border-radius: 14px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
         }
         .ai-product-btn:hover { background: #0077ed; transform: scale(1.05); }
+
+        /* =========================================
+           CSS CHO POPUP XÁC NHẬN ĐỘ TUỔI
+           ========================================= */
+        .age-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); 
+            display: flex; justify-content: center; align-items: center; z-index: 99999; visibility: hidden; opacity: 0; transition: visibility 0s, opacity 0.4s ease-in-out;
+        }
+        .age-modal-overlay.active { visibility: visible; opacity: 1; }
+        .age-modal-content {
+            background: #1a1a1a; color: #fff; padding: 40px; border-radius: 12px; text-align: center; max-width: 450px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333;
+        }
+        .age-icon-wrapper { display: flex; justify-content: center; margin-bottom: 25px; }
+        .animated-18-logo {
+            width: 90px; height: 90px; border: 5px solid #e74c3c; border-radius: 50%; display: flex; justify-content: center; align-items: center; background-color: rgba(231, 76, 60, 0.1); box-shadow: 0 0 15px rgba(231, 76, 60, 0.4); animation: pulse-alert 1.5s infinite alternate;
+        }
+        .animated-18-logo span { font-size: 38px; font-weight: 900; font-family: 'Arial', sans-serif; color: #e74c3c; letter-spacing: -1px; }
+        @keyframes pulse-alert {
+            0% { transform: scale(1); box-shadow: 0 0 10px rgba(231, 76, 60, 0.3); }
+            100% { transform: scale(1.12); box-shadow: 0 0 30px rgba(231, 76, 60, 0.9), inset 0 0 15px rgba(231, 76, 60, 0.4); }
+        }
+        .age-modal-content h2 { margin-top: 0; font-size: 24px; color: #f39c12; }
+        .age-modal-content p { font-size: 15px; line-height: 1.6; color: #ccc; margin-bottom: 30px; }
+        .age-buttons { display: flex; gap: 15px; justify-content: center; }
+        .age-buttons button { padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; }
+        .btn-yes { background-color: #f39c12; color: #000; }
+        .btn-yes:hover { background-color: #d68910; transform: scale(1.05); }
+        .btn-no { background-color: transparent; color: #fff; border: 2px solid #555 !important; }
+        .btn-no:hover { background-color: #333; }
+
+        /* ==============================================================
+           START: CSS MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW)
+           ============================================================== */
+        /* Mở khóa thanh cuộn để có thể cuộn xuống xem Form Đánh Giá */
+        .popover-info-col {
+            max-height: 75vh;       
+            overflow-y: auto;       
+            padding-right: 15px;    
+            padding-bottom: 20px;
+        }
+        .popover-info-col::-webkit-scrollbar { width: 6px; }
+        .popover-info-col::-webkit-scrollbar-thumb { background: #d2d2d7; border-radius: 10px; }
+
+        .product-reviews-section { margin-top: 25px; color: #1d1d1f; } 
+        .review-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; padding-right: 10px; }
+        
+        .review-item { background: #f5f5f7; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e5e5ea; }
+        .review-item-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .review-item-header strong { color: #0071e3; } 
+        .review-item-stars i { color: #f39c12; font-size: 12px; } 
+        .review-item-text { font-size: 14px; color: #333; line-height: 1.4; }
+        
+        .star-rating-input { margin-bottom: 10px; cursor: pointer; display: flex; flex-direction: row; }
+        .star-rating-input i { color: #d2d2d7; font-size: 22px; transition: color 0.2s; padding-right: 5px; }
+        .star-rating-input i.active, .star-rating-input i:hover, .star-rating-input i:hover ~ i { color: #f39c12; }
+        .star-rating-input:hover i { color: #f39c12; }
+        .star-rating-input i:hover ~ i { color: #d2d2d7 !important; }
+        
+        .review-input, .review-textarea {
+            width: 100%; background: #ffffff; border: 1px solid #d2d2d7; color: #1d1d1f;
+            padding: 12px; border-radius: 8px; margin-bottom: 12px; font-family: inherit; font-size: 14px;
+        }
+        .review-input:focus, .review-textarea:focus { outline: none; border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.2); }
+        
+        .btn-submit-review {
+            background-color: #0071e3; color: white; border: none; padding: 12px 20px; border-radius: 8px;
+            cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; font-size: 15px;
+        }
+        .btn-submit-review:hover { background-color: #005bb5; }
+        /* END: CSS MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW) */
     </style>
 </head>
 <body>
+    <!-- START: Age Verification Modal -->
+    <div id="age-verification-modal" class="age-modal-overlay">
+        <div class="age-modal-content">
+            <div class="age-icon-wrapper">
+            <div class="animated-18-logo">
+                <span>18+</span>
+            </div>
+        </div>
+            <h2>Xác nhận độ tuổi</h2>
+            <p>Website FStore cung cấp thông tin và kinh doanh các sản phẩm đồ uống có cồn. Theo quy định của pháp luật, bạn phải từ <strong>18 tuổi trở lên</strong> mới được phép truy cập.</p>
+            <div class="age-buttons">
+                <button id="btn-yes-18" class="btn-yes">Tôi đã đủ 18 tuổi</button>
+                <button id="btn-no-18" class="btn-no">Tôi chưa đủ 18 tuổi</button>
+            </div>
+        </div>
+    </div>
+    <!-- END: Age Verification Modal -->
+
     <header class="liquid-header">
         <nav class="nav-container">
             <ul class="nav-list" id="mainNavList"></ul>
@@ -190,6 +307,65 @@
         </section>
         
     </div>
+    
+        <section class="explore-brands-section">
+            <h2 class="explore-brands-title">KHÁM PHÁ CÁC THƯƠNG HIỆU</h2>
+            
+            <div class="fstore-showcase">
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/1.png" alt="Tên bia 1">
+                    <span class="bottle-tooltip">Nhãn 1</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/2.png" alt="Tên bia 2">
+                    <span class="bottle-tooltip">Nhãn 2</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/3.png" alt="Tên bia 3">
+                    <span class="bottle-tooltip">Nhãn 3</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/4.png" alt="Tên bia 4">
+                    <span class="bottle-tooltip">Nhãn 4</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/5.png" alt="Tên bia 5">
+                    <span class="bottle-tooltip">Nhãn 5</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/6.png" alt="Tên bia 6">
+                    <span class="bottle-tooltip">Nhãn 6</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/7.png" alt="Tên bia 7">
+                    <span class="bottle-tooltip">Nhãn 7 (Center)</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/8.png" alt="Tên bia 8">
+                    <span class="bottle-tooltip">Nhãn 8</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/9.png" alt="Tên bia 9">
+                    <span class="bottle-tooltip">Nhãn 9</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/10.png" alt="Tên bia 10">
+                    <span class="bottle-tooltip">Nhãn 10</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/11.png" alt="Tên bia 11">
+                    <span class="bottle-tooltip">Nhãn 11</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/12.png" alt="Tên bia 12">
+                    <span class="bottle-tooltip">Nhãn 12</span>
+                </div>
+                <div class="bottle-wrapper">
+                    <img src="./assets/media/img/13.png" alt="Tên bia 13">
+                    <span class="bottle-tooltip">Nhãn 13</span>
+                </div>
+            </div>
+        </section>
 
     <main class="main-content" id="mainContent" style="display: none; padding-top: 80px;">
         <div class="product-section">
@@ -218,6 +394,39 @@
                             <i class="fa-regular fa-heart"></i>
                         </button>
                     </div>
+
+                    <!-- ==============================================================
+                         START: HTML MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW)
+                         ============================================================== -->
+                    <div class="product-reviews-section">
+                        <hr style="border: 0; border-top: 1px solid #d2d2d7; margin: 25px 0 20px 0;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #1d1d1f;">Khách hàng đánh giá</h3>
+                        
+                        <!-- Nơi hiển thị các bình luận cũ -->
+                        <div id="reviewList" class="review-list">
+                            <p style="color: #888; font-size: 13px; font-style: italic;">Đang tải đánh giá...</p>
+                        </div>
+                        
+                        <!-- Form viết bình luận mới -->
+                        <div class="review-form">
+                            <h4 style="font-size: 14px; margin-bottom: 10px; color: #1d1d1f;">Viết đánh giá của bạn</h4>
+                            
+                            <div class="star-rating-input" id="starRatingInput">
+                                <i class="fa-solid fa-star" data-value="1"></i>
+                                <i class="fa-solid fa-star" data-value="2"></i>
+                                <i class="fa-solid fa-star" data-value="3"></i>
+                                <i class="fa-solid fa-star" data-value="4"></i>
+                                <i class="fa-solid fa-star" data-value="5"></i>
+                            </div>
+                            
+                            <input type="text" id="reviewerName" placeholder="Tên của bạn (VD: Đức Thịnh)..." class="review-input">
+                            <textarea id="reviewComment" rows="3" placeholder="Chia sẻ cảm nhận về hương vị của loại đồ uống này..." class="review-textarea"></textarea>
+                            
+                            <button id="submitReviewBtn" class="btn-submit-review">Gửi đánh giá</button>
+                        </div>
+                    </div>
+                    <!-- END: HTML MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW) -->
+
                 </div>
             </div>
         </div>
@@ -252,9 +461,14 @@
         </div>
     </div>
 
+    <!-- MAIN FIREBASE MODULE SCRIPT -->
     <script type="module">
         import { db } from './models/firebaseConfig.js';
-        import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        // ==============================================================
+        // BỔ SUNG CÁC HÀM FIREBASE CHO PHẦN REVIEW
+        // ==============================================================
+        import { collection, getDocs, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
             const API_KEY = "AQ.Ab8RN" + "6I3Ik59qVY7M" + "lzVyukCL2UYQIFytQwUgLMNUfdXI-cLUQ";
@@ -448,12 +662,162 @@
             if(chatInput) chatInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMessage();
             });
+
+            // ==============================================================
+            // START: LOGIC JS MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW)
+            // ==============================================================
+            let currentRating = 5; 
+            let currentOpenedProductId = null; 
+
+            const starIcons = document.querySelectorAll('#starRatingInput i');
+            const reviewList = document.getElementById('reviewList');
+            const submitReviewBtn = document.getElementById('submitReviewBtn');
+            const reviewerNameInput = document.getElementById('reviewerName');
+            const reviewCommentInput = document.getElementById('reviewComment');
+
+            // Xử lý hiệu ứng chọn Sao
+            starIcons.forEach(star => {
+                star.addEventListener('click', (e) => {
+                    currentRating = parseInt(e.target.getAttribute('data-value'));
+                    starIcons.forEach((s, index) => {
+                        if (index < currentRating) {
+                            s.style.color = '#f39c12';
+                        } else {
+                            s.style.color = '#d2d2d7';
+                        }
+                    });
+                });
+            });
+
+            // Hàm Tải danh sách đánh giá từ Firebase (Gắn nó vào biến global window để productController gọi được)
+            window.loadReviews = async (productId) => {
+                currentOpenedProductId = productId;
+                if (!reviewList) return;
+                reviewList.innerHTML = '<p style="color: #888; font-size: 13px;">Đang tải đánh giá...</p>';
+                
+                try {
+                    const q = query(collection(db, "reviews"), where("productId", "==", productId));
+                    const querySnapshot = await getDocs(q);
+                    
+                    reviewList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        reviewList.innerHTML = '<p style="color: #888; font-size: 13px; font-style: italic;">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>';
+                        return;
+                    }
+
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        let starsHtml = '';
+                        for(let i = 0; i < 5; i++) {
+                            starsHtml += i < data.rating ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star" style="color: #d2d2d7;"></i>';
+                        }
+                        const reviewHtml = `
+                            <div class="review-item">
+                                <div class="review-item-header">
+                                    <strong>${data.customerName}</strong>
+                                    <div class="review-item-stars">${starsHtml}</div>
+                                </div>
+                                <div class="review-item-text">${data.comment}</div>
+                            </div>
+                        `;
+                        reviewList.insertAdjacentHTML('beforeend', reviewHtml);
+                    });
+                } catch (error) {
+                    console.error("Lỗi tải đánh giá: ", error);
+                    reviewList.innerHTML = '<p style="color: red; font-size: 13px;">Không thể tải đánh giá lúc này.</p>';
+                }
+            };
+
+            // Xử lý sự kiện bấm Gửi Đánh Giá
+            if (submitReviewBtn) {
+                submitReviewBtn.addEventListener('click', async () => {
+                    if (!currentOpenedProductId) {
+                        alert("Lỗi: Không xác định được sản phẩm!");
+                        return;
+                    }
+
+                    const name = reviewerNameInput.value.trim() || "Khách ẩn danh";
+                    const comment = reviewCommentInput.value.trim();
+
+                    if (comment === "") {
+                        alert("Vui lòng nhập nội dung đánh giá của bạn!");
+                        return;
+                    }
+
+                    submitReviewBtn.innerText = "Đang gửi...";
+                    submitReviewBtn.disabled = true;
+
+                    try {
+                        await addDoc(collection(db, "reviews"), {
+                            productId: currentOpenedProductId,
+                            customerName: name,
+                            rating: currentRating,
+                            comment: comment,
+                            createdAt: new Date().toISOString()
+                        });
+
+                        reviewCommentInput.value = '';
+                        await window.loadReviews(currentOpenedProductId);
+                        
+                        const toastMsg = document.getElementById('toastMessage');
+                        const toastNotif = document.getElementById('toastNotification');
+                        if (toastMsg && toastNotif) {
+                            toastMsg.innerText = "Cảm ơn bạn đã đánh giá!";
+                            toastNotif.classList.add('show');
+                            setTimeout(() => toastNotif.classList.remove('show'), 3000);
+                        }
+
+                    } catch (error) {
+                        console.error("Lỗi gửi đánh giá: ", error);
+                        alert("Đã xảy ra lỗi khi gửi đánh giá.");
+                    } finally {
+                        submitReviewBtn.innerText = "Gửi đánh giá";
+                        submitReviewBtn.disabled = false;
+                    }
+                });
+            }
+            // ==============================================================
+            // END: LOGIC JS MỚI CHO HỆ THỐNG ĐÁNH GIÁ (REVIEW)
+            // ==============================================================
+
         });
     </script>
 
-    <script type="module" src="./controllers/headerController.js"></script>
-    <script type="module" src="./controllers/productController.js"></script>
+    <!-- JS XỬ LÝ POPUP XÁC NHẬN ĐỘ TUỔI -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const ageModal = document.getElementById('age-verification-modal');
+            const btnYes = document.getElementById('btn-yes-18');
+            const btnNo = document.getElementById('btn-no-18');
+
+            const isVerified = localStorage.getItem('isFStoreVerifiedOver18');
+
+            if (!isVerified) {
+                ageModal.classList.add('active');
+                document.body.style.overflow = 'hidden'; 
+            }
+
+            if(btnYes) {
+                btnYes.addEventListener('click', function() {
+                    localStorage.setItem('isFStoreVerifiedOver18', 'true');
+                    ageModal.classList.remove('active');
+                    document.body.style.overflow = 'auto'; 
+                });
+            }
+
+            if(btnNo) {
+                btnNo.addEventListener('click', function() {
+                    alert("Rất tiếc, bạn phải đủ 18 tuổi để truy cập. Hệ thống sẽ chuyển hướng bạn ra ngoài.");
+                    window.location.href = "https://www.google.com";
+                });
+            }
+        });
+    </script>
+
+    <script type="module" src="/controllers/headerController.js"></script>
+    <script type="module" src="/controllers/productController.js"></script>
     <div id="footer-placeholder"></div>
-    <script src="./controllers/loadComponents.js"></script>
+    <script src="/controllers/loadComponents.js"></script>
 </body>
 </html>

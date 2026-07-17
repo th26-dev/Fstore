@@ -162,6 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (popoverVariants) popoverVariants.innerHTML = variantsHtml;
 
+                if (typeof window.loadReviews === 'function') {
+                    window.loadReviews(currentProduct.id);
+                }
+
                 if (productPopover) productPopover.classList.add('active');
             }
         } catch (error) {}
