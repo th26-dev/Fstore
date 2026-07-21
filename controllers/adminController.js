@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const variantsContainer = document.getElementById('variantsContainer');
     const specsContainer = document.getElementById('specsContainer');
     
-    // Cập nhật Placeholder cho form nhập Biến thể
+    // Cập nhật Placeholder cho form nhập Biến thể và Title chứa dấu chấm phẩy
     window.addVariantRow = (color = '', storage = '', price = '', images = '') => {
         const row = document.createElement('div');
         row.className = 'variant-row';
@@ -415,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" placeholder="Quy cách (VD: Thùng 24 lon)" class="v-color" value="${color}" required>
             <input type="text" placeholder="Thể tích (VD: 330ml)" class="v-storage" value="${storage}" required>
             <input type="number" placeholder="Giá tiền" class="v-price" value="${price}" required>
-            <input type="text" placeholder="Link ảnh..." class="v-image" value="${images}" required title="Cách nhau bởi dấu phẩy">
+            <input type="text" placeholder="Link ảnh..." class="v-image" value="${images}" required title="Cách nhau bởi dấu CHẤM PHẨY (;)">
             <button type="button" class="btn-action btn-del" onclick="this.parentElement.remove()">X</button>
         `;
         variantsContainer.appendChild(row);
@@ -461,7 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
         variantsContainer.innerHTML = '';
         if (p.variants && p.variants.length > 0) {
             p.variants.forEach(v => {
-                const imgStr = v.images ? v.images.join(', ') : (v.image || "");
+                // ĐÃ SỬA: Khi render lại lên form, dùng chấm phẩy để nối chuỗi thay vì dấu phẩy
+                const imgStr = v.images ? v.images.join('; ') : (v.image || "");
                 window.addVariantRow(v.color, v.storage, v.price, imgStr);
             });
         } else {
@@ -486,7 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const variants = [];
         document.querySelectorAll('#variantsContainer .variant-row').forEach((row, index) => {
             const rawImages = row.querySelector('.v-image').value;
-            const imgArray = rawImages.split(',').map(img => img.trim()).filter(img => img !== '');
+            
+            // ĐÃ SỬA: Cắt chuỗi ảnh bằng dấu CHẤM PHẨY (;) thay vì dấu phẩy (,)
+            const imgArray = rawImages.split(';').map(img => img.trim()).filter(img => img !== '');
 
             variants.push({
                 variantId: `v${index + 1}`,
