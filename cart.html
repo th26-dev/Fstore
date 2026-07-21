@@ -60,7 +60,6 @@
                         <input type="radio" name="payment" value="momo" checked>
                         <span>Ví MoMo</span>
                     </label>
-                    <!-- 🌟 BỔ SUNG THÊM NÚT ZALOPAY 🌟 -->
                     <label class="payment-label">
                         <input type="radio" name="payment" value="zalopay">
                         <span>ZaloPay</span>
@@ -75,8 +74,28 @@
                 <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
             </div>
 
-            <div class="cart-items-list" id="cartItems">
+            <!-- DANH SÁCH SẢN PHẨM TRONG GIỎ HÀNG -->
+            <div class="cart-items-list" id="cartItems"></div>
+
+            <!-- ==========================================================
+                 KHU VỰC AI GỢI Ý MUA KÈM (BÁN CHÉO)
+                 ========================================================== -->
+            <div id="ai-recommendation-section" style="display: none; margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-radius: 16px; border: 1px dashed #bae6fd;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <i class="fa-solid fa-wand-magic-sparkles" style="color: #0ea5e9; font-size: 22px;"></i>
+                    <h3 style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 600;">Gợi ý từ AI: Mua kèm để nhận Deal hời!</h3>
                 </div>
+                
+                <div id="ai-recommendation-loader" style="font-size: 14px; color: #64748b; font-weight: 500;">
+                    <i class="fa-solid fa-spinner fa-spin" style="margin-right: 5px;"></i> Trợ lý AI đang phân tích giỏ hàng của bạn...
+                </div>
+
+                <!-- Nơi JS sẽ nhét thẻ sản phẩm gợi ý vào -->
+                <div id="ai-recommendation-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 20px;">
+                </div>
+            </div>
+            <!-- ========================================================== -->
+
         </div>
     </main>
 

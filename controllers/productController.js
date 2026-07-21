@@ -27,6 +27,161 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentImageIndex = 0; 
     let slideInterval; 
 
+    // Biến toàn cục lưu trữ toàn bộ sản phẩm từ Firebase để Lọc
+    let allGlobalProducts = [];
+
+    // ==========================================================
+    // TẢI TOÀN BỘ SẢN PHẨM VÀ KHỞI TẠO BỘ LỌC
+    // ==========================================================
+    const initializeApp = async () => {
+        try {
+            const snapshot = await getDocs(collection(db, "products"));
+            allGlobalProducts = [];
+            snapshot.forEach(d => {
+                allGlobalProducts.push({ id: d.id, ...d.data() });
+            });
+            initAdvancedFilter(); // Khởi tạo bộ lọc sau khi đã có dữ liệu sản phẩm
+        } catch (error) {
+            console.error("Lỗi khi tải dữ liệu sản phẩm ban đầu: ", error);
+        }
+    };
+
+    initializeApp();
+
+    // ==========================================================
+    // LOGIC XỬ LÝ BỘ LỌC NÂNG CAO (NÂNG CẤP TỪ BÁCH HÓA XANH)
+    // ==========================================================
+    const initAdvancedFilter = async () => {
+        const modal = document.getElementById('advancedFilterModal');
+        const btnOpen = document.getElementById('btnOpenAdvancedFilter');
+        const btnClose = document.getElementById('closeAdvFilter');
+        const btnReset = document.getElementById('btnResetFilter');
+        const btnApply = document.getElementById('btnApplyFilter');
+
+        if(btnOpen) btnOpen.addEventListener('click', () => modal.classList.add('active'));
+        if(btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+
+        try {
+            const catSnap = await getDocs(collection(db, "categories"));
+            let logosHtml = '';
+            catSnap.forEach(doc => {
+                const data = doc.data();
+                if(data.imageUrl && data.imageUrl.trim() !== "") {
+                    logosHtml += `
+                        <div class="brand-logo-btn" data-filter-type="brand" data-val="${data.id}" title="${data.name}">
+                            <img src="${data.imageUrl}" alt="${data.name}">
+                        </div>`;
+                }
+            });
+            document.getElementById('quickBrandLogos').innerHTML = logosHtml;
+            document.getElementById('modalBrandLogos').innerHTML = logosHtml;
+
+            // Xử lý khi nhấn trực tiếp vào Logo ở thanh lọc nhanh (Quick Bar)
+            const quickLogos = document.querySelectorAll('#quickBrandLogos .brand-logo-btn');
+            quickLogos.forEach(logo => {
+                logo.addEventListener('click', () => {
+                    quickLogos.forEach(l => l.classList.remove('active')); // Tắt hết logo khác
+                    logo.classList.add('active'); // Bật logo này
+
+                    // Đồng bộ với Modal bên trong
+                    document.querySelectorAll('#modalBrandLogos .brand-logo-btn').forEach(b => b.classList.remove('active'));
+                    const targetModalLogo = document.querySelector(`#modalBrandLogos .brand-logo-btn[data-val="${logo.dataset.val}"]`);
+                    if(targetModalLogo) targetModalLogo.classList.add('active');
+
+                    // Áp dụng Lọc ngay lập tức
+                    applyFilters(); 
+                });
+            });
+
+        } catch(e) { console.error("Lỗi load Categories Logo", e); }
+
+        // Sự kiện Toggle (Chọn/Bỏ chọn) các nút Option bên TRONG Modal
+        const allOptionBtns = document.querySelectorAll('#advancedFilterModal .opt-btn, #advancedFilterModal .brand-logo-btn');
+        allOptionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if(btn.parentElement.id === 'filterSortOptions') {
+                    document.querySelectorAll('#filterSortOptions .opt-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.toggle('active');
+                }
+                updateApplyButtonCount();
+            });
+        });
+
+        if(btnReset) {
+            btnReset.addEventListener('click', () => {
+                allOptionBtns.forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#quickBrandLogos .brand-logo-btn').forEach(b => b.classList.remove('active'));
+                updateApplyButtonCount();
+                renderProducts(allGlobalProducts, "Tất cả sản phẩm"); 
+            });
+        }
+
+        if(btnApply) {
+            btnApply.addEventListener('click', () => {
+                applyFilters();
+                modal.classList.remove('active');
+            });
+        }
+    };
+
+    const updateApplyButtonCount = () => {
+        const filtered = getFilteredProductsArray();
+        const btnApply = document.getElementById('btnApplyFilter');
+        btnApply.innerText = `Áp dụng (${filtered.length} sản phẩm)`;
+        if(filtered.length > 0) btnApply.classList.add('ready');
+        else btnApply.classList.remove('ready');
+    };
+
+    const getFilteredProductsArray = () => {
+        const activeSort = document.querySelector('#filterSortOptions .opt-btn.active')?.dataset.sort;
+        const activeBrands = Array.from(document.querySelectorAll('#modalBrandLogos .brand-logo-btn.active')).map(b => b.dataset.val);
+        const activePacks = Array.from(document.querySelectorAll('#filterPackageOptions .opt-btn.active')).map(b => b.dataset.pack);
+        const activeVols = Array.from(document.querySelectorAll('#filterVolumeOptions .opt-btn.active')).map(b => parseInt(b.dataset.vol));
+
+        let result = [...allGlobalProducts];
+
+        if (activeBrands.length > 0) {
+            result = result.filter(p => activeBrands.includes(p.categoryId));
+        }
+
+        if (activePacks.length > 0) {
+            result = result.filter(p => {
+                return activePacks.some(pack => p.name.toLowerCase().includes(pack.toLowerCase()));
+            });
+        }
+
+        if (activeVols.length > 0) {
+            result = result.filter(p => {
+                const text = (p.name + " " + (p.description||"")).toLowerCase();
+                if(activeVols.includes(330) && text.includes("330ml")) return true;
+                if(activeVols.includes(250) && text.includes("250ml")) return true;
+                if(activeVols.includes(500) && text.includes("500ml")) return true;
+                return false;
+            });
+        }
+
+        if (activeSort) {
+            result.sort((a, b) => {
+                const priceA = a.variants?.[0]?.price || a.price || 0;
+                const priceB = b.variants?.[0]?.price || b.price || 0;
+                
+                if (activeSort === 'price-desc') return priceB - priceA;
+                if (activeSort === 'price-asc') return priceA - priceB;
+                return 0; 
+            });
+        }
+
+        return result;
+    };
+
+    const applyFilters = () => {
+        const result = getFilteredProductsArray();
+        renderProducts(result, "Kết quả Lọc sản phẩm");
+    };
+
+
     const ambilightWrappers = document.querySelectorAll('.ambilight-wrapper');
     ambilightWrappers.forEach(wrapper => {
         const glowVideo = wrapper.querySelector('.ambilight-glow');
@@ -71,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sectionTitle.innerText = title;
         
         if (products.length === 0) {
-            productGrid.innerHTML = '<p style="grid-column: 1 / -1; font-size: 18px; text-align: center;">Không tìm thấy sản phẩm nào.</p>';
+            productGrid.innerHTML = '<p style="grid-column: 1 / -1; font-size: 18px; text-align: center; color: #ff3b30;">Không tìm thấy sản phẩm nào phù hợp với bộ lọc.</p>';
             return;
         }
 
@@ -307,21 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const saveItemBtn = document.getElementById('saveItemBtn');
     
-    const checkSavedStatus = () => {
-        if (!saveItemBtn || !auth.currentUser || !currentProduct) return;
-        const savedKey = `saved_${auth.currentUser.uid}`;
-        const savedItems = JSON.parse(localStorage.getItem(savedKey)) || [];
-        const isSaved = savedItems.some(item => item.id === currentProduct.id);
-        
-        if (isSaved) {
-            saveItemBtn.innerHTML = '<i class="fa-solid fa-heart" style="color: #ff3b30;"></i>';
-            saveItemBtn.style.borderColor = '#ff3b30';
-        } else {
-            saveItemBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
-            saveItemBtn.style.borderColor = '#d2d2d7';
-        }
-    };
-
     if (saveItemBtn) {
         saveItemBtn.addEventListener('click', () => {
             const currentUser = auth.currentUser;

@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isEditCategory = false; 
         document.getElementById('categoryForm').reset(); 
         document.getElementById('catId').readOnly = false; 
+        document.getElementById('catImage').value = ""; // Gắn lại ảnh rỗng khi tạo mới
         document.getElementById('catModalTitle').innerText = "Thêm Danh Mục Mới";
         catModal.style.display = "block"; 
     }
@@ -333,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('catId').readOnly = true; 
             document.getElementById('catName').value = cat.name;
             document.getElementById('catParentId').value = cat.parentId || "";
+            document.getElementById('catImage').value = cat.imageUrl || ""; // Lấy link ảnh cũ hiển thị lên
             document.getElementById('catModalTitle').innerText = "Sửa Danh Mục";
             catModal.style.display = "block";
         }
@@ -352,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: id,
             name: document.getElementById('catName').value.trim(),
             parentId: parentId,
+            imageUrl: document.getElementById('catImage').value.trim(), // Lưu trường ảnh vào Database
             order: isEditCategory ? categoriesList.find(c => c.id === id).order : categoriesList.length + 1
         };
 
@@ -404,12 +407,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const variantsContainer = document.getElementById('variantsContainer');
     const specsContainer = document.getElementById('specsContainer');
     
+    // Cập nhật Placeholder cho form nhập Biến thể
     window.addVariantRow = (color = '', storage = '', price = '', images = '') => {
         const row = document.createElement('div');
         row.className = 'variant-row';
         row.innerHTML = `
-            <input type="text" placeholder="Màu (VD: Đen)" class="v-color" value="${color}" required>
-            <input type="text" placeholder="Dung lượng" class="v-storage" value="${storage}" required>
+            <input type="text" placeholder="Quy cách (VD: Thùng 24 lon)" class="v-color" value="${color}" required>
+            <input type="text" placeholder="Thể tích (VD: 330ml)" class="v-storage" value="${storage}" required>
             <input type="number" placeholder="Giá tiền" class="v-price" value="${price}" required>
             <input type="text" placeholder="Link ảnh..." class="v-image" value="${images}" required title="Cách nhau bởi dấu phẩy">
             <button type="button" class="btn-action btn-del" onclick="this.parentElement.remove()">X</button>
@@ -417,12 +421,13 @@ document.addEventListener('DOMContentLoaded', () => {
         variantsContainer.appendChild(row);
     };
 
+    // Cập nhật Placeholder cho form nhập Thông số kỹ thuật
     window.addSpecRow = (key = '', val = '') => {
         const row = document.createElement('div');
         row.className = 'variant-row';
         row.innerHTML = `
-            <input type="text" placeholder="Tên (VD: Màn hình)" class="s-key" value="${key}">
-            <input type="text" placeholder="Giá trị (VD: 6.2 in)" class="s-val" value="${val}" style="flex: 2;">
+            <input type="text" placeholder="Tên (VD: Nồng độ cồn)" class="s-key" value="${key}">
+            <input type="text" placeholder="Giá trị (VD: 5%)" class="s-val" value="${val}" style="flex: 2;">
             <button type="button" class="btn-action btn-del" onclick="this.parentElement.remove()">X</button>
         `;
         specsContainer.appendChild(row);

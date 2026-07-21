@@ -84,7 +84,7 @@
                     <div style="display: flex; gap: 15px; align-items: center;">
                         <select id="filterProductCategory" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
                             <option value="all">Tất cả danh mục</option>
-                            </select>
+                        </select>
                         <button class="btn-action btn-save" id="btnAddProduct">Thêm sản phẩm</button>
                     </div>
 
@@ -119,6 +119,7 @@
         </main>
     </div>
 
+    <!-- MODAL QUẢN LÝ DANH MỤC (ĐÃ THÊM LOGO) -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeCatModal">&times;</span>
@@ -126,22 +127,30 @@
             <form id="categoryForm" style="margin-top: 20px;">
                 <input type="hidden" id="catDocId">
                 <div class="form-group">
-                    <label>Mã Danh mục (Ví dụ: cat_ip16)</label>
+                    <label>Mã Danh mục (Ví dụ: cat_bia_tiger)</label>
                     <input type="text" id="catId" required placeholder="Viết liền không dấu">
                 </div>
                 <div class="form-group">
                     <label>Tên Danh mục hiển thị</label>
-                    <input type="text" id="catName" required placeholder="Ví dụ: iPhone 16 Series">
+                    <input type="text" id="catName" required placeholder="Ví dụ: Bia Tiger">
                 </div>
                 <div class="form-group">
                     <label>Thuộc danh mục cha (Để trống nếu đây là danh mục gốc)</label>
                     <select id="catParentId"><option value="">-- Không có (Danh mục gốc) --</option></select>
                 </div>
+                
+                <!-- BỔ SUNG Ô NHẬP LINK ẢNH LOGO -->
+                <div class="form-group">
+                    <label>Link ảnh Logo Thương hiệu (Dùng làm bộ lọc)</label>
+                    <input type="text" id="catImage" placeholder="Dán link ảnh logo (VD: logo Tiger, Heineken...)">
+                </div>
+
                 <button type="submit" class="btn-action btn-save">Lưu Danh Mục</button>
             </form>
         </div>
     </div>
 
+    <!-- MODAL QUẢN LÝ SẢN PHẨM -->
     <div id="productModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeProdModal">&times;</span>
@@ -151,7 +160,7 @@
                 
                 <div class="form-group">
                     <label>Tên Sản Phẩm</label>
-                    <input type="text" id="prodName" required>
+                    <input type="text" id="prodName" required placeholder="Ví dụ: Thùng 24 lon bia Tiger 330ml">
                 </div>
                 <div class="form-group">
                     <label>Danh Mục (Lấy động từ Database)</label>
@@ -159,17 +168,17 @@
                 </div>
                 <div class="form-group">
                     <label>Mô tả ngắn</label>
-                    <textarea id="prodDesc" rows="3" required></textarea>
+                    <textarea id="prodDesc" rows="3" required placeholder="Nhập mô tả hương vị, đặc điểm nổi bật..."></textarea>
                 </div>
 
                 <hr style="margin: 20px 0; border: 0.5px solid #eee;">
-                <h3>Thông số kỹ thuật</h3>
+                <h3>Thông tin chi tiết (Nồng độ cồn, Xuất xứ...)</h3>
                 <button type="button" class="btn-action btn-add-var" id="btnAddSpec">+ Thêm thông số</button>
                 <div id="specsContainer" class="variant-box">
                     </div>
                 
                 <hr style="margin: 20px 0; border: 0.5px solid #eee;">
-                <h3>Biến thể Sản phẩm (Màu, Dung lượng, Giá, Ảnh...)</h3>
+                <h3>Phân loại (Quy cách, Thể tích, Giá, Ảnh...)</h3>
                 <p style="font-size: 13px; color: #ff3b30; margin-bottom: 10px;">* Mẹo: Ở ô Link ảnh, bạn có thể dán nhiều link, cách nhau bởi dấu phẩy (,)</p>
                 <button type="button" class="btn-action btn-add-var" id="btnAddVariant">+ Thêm phân loại</button>
                 <div id="variantsContainer" class="variant-box">
