@@ -132,12 +132,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const categoriesRef = collection(db, "categories");
         const snapshot = await getDocs(query(categoriesRef, orderBy("order")));
         const allCategories = [];
-        snapshot.forEach(doc => allCategories.push(doc.data()));
+        snapshot.forEach(doc => {
+            allCategories.push({ id: doc.id, ...doc.data() });
+        });
 
         const parentCategories = allCategories.filter(cat => cat.parentId === null);
         const childCategories = allCategories.filter(cat => cat.parentId !== null);
 
-        let navHTML = `<li class="nav-item"><a href="index.html" class="nav-link"><i class="fa-solid fa-store" style="font-size: 1.2rem;"></i></a></li>`;
+        // ==============================================================
+        // ĐÂY LÀ CHỖ LOGO CHỮ FSTORE SANG TRỌNG BÁM SÁT STYLE APPLE
+        // ==============================================================
+        let navHTML = `<li class="nav-item">
+            <a href="index.html" class="nav-link" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 600; color: rgba(0, 0, 0, 0.8); letter-spacing: -0.5px; opacity: 0.8; transition: opacity 0.3s ease;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">FStore</a>
+        </li>`;
+        
         parentCategories.forEach(parent => {
             navHTML += `<li class="nav-item has-dropdown" data-id="${parent.id}"><a href="#" class="nav-link">${parent.name}</a></li>`;
         });
@@ -308,23 +316,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
+        document.addEventListener('click', (e) => {
+            const categoryItem = e.target.closest('.sub-category-item'); // Click Menu con
+            const rootCategoryLink = e.target.closest('.has-dropdown > a'); // Click Menu gốc
+
+            if (categoryItem || rootCategoryLink) {
+                e.preventDefault(); 
+                
+                let categoryId, categoryName, isRoot = false, childIds = [];
+                
+                if (categoryItem) {
+                    categoryId = categoryItem.getAttribute('data-id');
+                    categoryName = categoryItem.innerText;
+                } else {
+                    const parentLi = rootCategoryLink.closest('.has-dropdown');
+                    categoryId = parentLi.getAttribute('data-id');
+                    categoryName = rootCategoryLink.innerText.trim();
+                    isRoot = true;
+                    
+                    const childrenOfThisRoot = childCategories.filter(child => child.parentId === categoryId);
+                    childIds = childrenOfThisRoot.map(c => c.id);
+                }
+
+                const path = window.location.pathname.toLowerCase();
+                const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
+                
+                localStorage.setItem('pendingCategoryLoad', JSON.stringify({ 
+                    id: categoryId, 
+                    name: categoryName,
+                    isRoot: isRoot,
+                    childIds: childIds 
+                }));
+                
+                if (!isHomePage) {
+                    window.location.href = 'index.html'; 
+                } else {
+                    window.location.reload(); 
+                }
+            }
+        });
+
     } catch (error) {
         console.error(error);
     }
 });
-
-document.addEventListener('click', (e) => {
-    const categoryItem = e.target.closest('.sub-category-item');
-    if (categoryItem) {
-        const categoryId = categoryItem.getAttribute('data-id');
-        const categoryName = categoryItem.innerText;
-        const path = window.location.pathname.toLowerCase();
-        const isHomePage = path.includes('index.html') || path === '/' || path.endsWith('/fstore/');
-        
-        if (!isHomePage) {
-            e.preventDefault(); 
-            localStorage.setItem('pendingCategoryLoad', JSON.stringify({ id: categoryId, name: categoryName }));
-            window.location.href = 'index.html'; 
-        }
-    }
-});c
