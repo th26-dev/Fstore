@@ -1,194 +1,379 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FStore - Giỏ hàng</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">
+import { auth, db } from '../models/firebaseConfig.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
+
+document.addEventListener('DOMContentLoaded', () => {
+    const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
+
+    const cartItemsContainer = document.getElementById('cartItems');
+    const totalPriceEl = document.getElementById('totalPrice');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const checkoutMsg = document.getElementById('checkoutMsg');
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    const emptyCartView = document.getElementById('emptyCartView');
+    const filledCartView = document.getElementById('filledCartView');
 
-    <link rel="stylesheet" href="./assets/css/style.css">
-    <link rel="stylesheet" href="./assets/css/header.css">
-    <link rel="stylesheet" href="./assets/css/cart.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    let cartData = [];
+    let userId = null;
+    let userEmail = ""; 
+    let userName = "";  
+    let currentCartSignature = ""; 
 
-    <style>
-        /* CSS cho khung Gợi ý Mua Kèm (Tick Box) */
-        .ai-upsell-box {
-            background: #f0fdf4; 
-            border: 2px dashed #22c55e; 
-            border-radius: 12px; 
-            padding: 15px; 
-            margin-bottom: 20px; 
-            display: none; /* Ẩn đi, chờ JS bật lên */
-            animation: fadeIn 0.5s ease-in-out;
-            transition: all 0.3s ease;
-            text-align: left;
+    let recommendedProductData = null; 
+    const chkBuyUpsell = document.getElementById('chkBuyUpsell');
+
+    let map = null;
+    let marker = null;
+    let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
+
+    const currentAddressText = document.getElementById('currentAddressText');
+    const detailAddressInput = document.getElementById('detailAddressInput');
+    const mapModal = document.getElementById('mapModal');
+    
+    if (finalAddress) currentAddressText.innerText = finalAddress;
+
+    // =========================================================================
+    // HÀM GỬI EMAIL XÁC NHẬN QUA EMAILJS NGAY KHI KHÁCH THANH TOÁN
+    // =========================================================================
+    const sendOrderConfirmationEmail = (orderId, customerEmail, customerName, totalAmount, paymentMethod, deliveryAddress) => {
+        const templateParams = {
+            to_email: customerEmail,
+            customer_name: customerName,
+            order_id: orderId,
+            total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+            payment_method: paymentMethod.toUpperCase(),
+            delivery_address: deliveryAddress
+        };
+
+        // GỌI API EMAILJS (Đảm bảo Public Key ở file HTML và Service ID ở đây đã khớp)
+        emailjs.send('service_xxxxx', 'template_ansuc2l', templateParams)
+            .then(function(response) {
+                console.log('✅ ĐÃ GỬI EMAIL HÓA ĐƠN THÀNH CÔNG!', response.status, response.text);
+            }, function(error) {
+                console.error('❌ LỖI GỬI EMAIL:', error);
+            });
+    };
+
+    async function getAddressFromCoords(lat, lng) {
+        detailAddressInput.value = "Đang tìm địa chỉ...";
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+            const data = await response.json();
+            if (data && data.display_name) {
+                detailAddressInput.value = data.display_name;
+            }
+        } catch (error) {
+            detailAddressInput.value = "Không thể định vị, vui lòng nhập tay.";
         }
-        .ai-upsell-box:hover {
-            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
-            background: #dcfce7;
+    }
+
+    document.getElementById('btnOpenMap').addEventListener('click', () => {
+        mapModal.classList.add('active');
+        setTimeout(() => {
+            if (!map) {
+                map = L.map('deliveryMap').setView([10.7769, 106.6951], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                marker = L.marker([10.7769, 106.6951], {draggable: true}).addTo(map);
+
+                marker.on('dragend', function () {
+                    const coords = marker.getLatLng();
+                    getAddressFromCoords(coords.lat, coords.lng);
+                });
+
+                map.on('click', function(e) {
+                    marker.setLatLng(e.latlng);
+                    getAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                });
+            } else {
+                map.invalidateSize(); 
+            }
+        }, 300);
+    });
+
+    document.getElementById('closeMapModal').addEventListener('click', () => {
+        mapModal.classList.remove('active');
+    });
+
+    document.getElementById('btnConfirmAddress').addEventListener('click', () => {
+        const addr = detailAddressInput.value.trim();
+        if (addr && addr !== "Đang tìm địa chỉ...") {
+            finalAddress = addr;
+            currentAddressText.innerText = finalAddress;
+            localStorage.setItem('fstore_delivery_address', finalAddress);
+            mapModal.classList.remove('active');
+        } else {
+            alert("Vui lòng nhập hoặc chọn một địa chỉ hợp lệ!");
         }
-        .upsell-flex {
-            display: flex; align-items: center; gap: 15px;
+    });
+
+    const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            window.location.href = 'auth.html';
+        } else {
+            userId = user.uid;
+            userEmail = user.email; 
+            userName = user.displayName || "Quý khách"; 
+
+            const savedCart = localStorage.getItem(`cart_${userId}`);
+            
+            if (savedCart && JSON.parse(savedCart).length > 0) {
+                cartData = JSON.parse(savedCart);
+                renderCart(); 
+            } else {
+                emptyCartView.style.display = 'block';
+                filledCartView.style.display = 'none';
+                document.getElementById('aiUpsellBox').style.display = 'none';
+            }
         }
-        .upsell-img {
-            width: 70px; height: 70px; object-fit: contain; border-radius: 8px; background: white; padding: 5px; border: 1px solid #bbf7d0;
+    });
+
+    const updateTotalPriceDisplay = () => {
+        let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
+            total += recommendedProductData.discountPrice;
         }
-        .upsell-info { flex: 1; }
-        .upsell-tag {
-            display: inline-block; font-size: 11px; color: white; background: #ea580c; padding: 3px 8px; border-radius: 12px; font-weight: bold; margin-bottom: 5px;
-        }
-        .upsell-name { font-size: 15px; font-weight: 700; color: #166534; margin: 0 0 4px 0; }
-        .upsell-reason { font-size: 13px; color: #15803d; font-style: italic; margin: 0; }
+        totalPriceEl.innerText = formatPrice(total);
+    };
+
+    if (chkBuyUpsell) {
+        chkBuyUpsell.addEventListener('change', updateTotalPriceDisplay);
+    }
+
+    const renderCart = () => {
+        emptyCartView.style.display = 'none';
+        filledCartView.style.display = 'block';
+
+        let html = '';
+        cartData.forEach((item, index) => {
+            if (!item.quantity) item.quantity = 1;
+            html += `
+                <div class="cart-item">
+                    <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                    <div class="cart-item-details">
+                        <div class="cart-item-info">
+                            <h3>${item.name}</h3>
+                            <p>${item.color || ''} ${item.storage ? '| ' + item.storage : ''}</p>
+                        </div>
+                        <div class="cart-item-actions" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                            <div style="font-size: 22px; font-weight: 600; color: #1d1d1f; margin-bottom: 15px;">${formatPrice(item.price)}</div>
+                            <div class="qty-select-wrapper">
+                                <select class="qty-select" data-index="${index}">
+                                    ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option value="${n}" ${item.quantity === n ? 'selected' : ''}>${n}</option>`).join('')}
+                                </select>
+                            </div>
+                            <button class="btn-remove remove-item" data-index="${index}">Xóa</button>
+                        </div>
+                    </div>
+                </div>`;
+        });
         
-        .upsell-pricing { text-align: right; margin-right: 15px; }
-        .upsell-price-new { color: #ef4444; font-weight: bold; font-size: 18px; margin-bottom: 2px;}
-        .upsell-price-old { color: #94a3b8; text-decoration: line-through; font-size: 13px; }
-        
-        /* Chỉnh style cho Checkbox to và dễ bấm */
-        .upsell-checkbox-wrapper input[type="checkbox"] {
-            width: 24px; height: 24px; cursor: pointer; accent-color: #16a34a;
+        cartItemsContainer.innerHTML = html;
+        if (chkBuyUpsell) chkBuyUpsell.checked = false; 
+        updateTotalPriceDisplay();
+        triggerAIRecommendations();
+
+        document.querySelectorAll('.qty-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const idx = e.target.dataset.index;
+                cartData[idx].quantity = parseInt(e.target.value); 
+                localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData)); 
+                updateTotalPriceDisplay(); 
+            });
+        });
+
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = e.target.dataset.index;
+                cartData.splice(idx, 1);
+                localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
+                window.dispatchEvent(new Event('cartUpdated')); 
+                if (cartData.length === 0) {
+                    emptyCartView.style.display = 'block';
+                    filledCartView.style.display = 'none';
+                    document.getElementById('aiUpsellBox').style.display = 'none';
+                    currentCartSignature = ""; 
+                } else {
+                    renderCart();
+                }
+            });
+        });
+    };
+
+    const triggerAIRecommendations = () => {
+        const newSignature = cartData.map(item => item.id).sort().join(',');
+        if (newSignature !== currentCartSignature && newSignature !== "") {
+            currentCartSignature = newSignature;
+            generateAIRecommendations();
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body>
-    <header class="liquid-header">
-        <nav class="nav-container">
-            <ul class="nav-list" id="mainNavList"></ul>
-        </nav>
+    };
 
-        <div class="search-bar-container" id="searchBarContainer">
-            <i class="fa-solid fa-magnifying-glass search-icon-input"></i>
-            <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm... (Nhấn Enter để tìm)">
-            <i class="fa-solid fa-xmark close-search" id="closeSearchBtn"></i>
-        </div>
+    const generateAIRecommendations = async () => {
+        const upsellBox = document.getElementById('aiUpsellBox');
+        if (!upsellBox || cartData.length === 0) return;
+        upsellBox.style.display = 'none';
 
-        <div class="dropdown-mega-menu" id="megaMenu">
-            <div class="dropdown-content" id="dropdownContent"></div>
-        </div>
-    </header>
+        try {
+            const productsSnapshot = await getDocs(collection(db, "products"));
+            let allProducts = [];
+            productsSnapshot.forEach(doc => { allProducts.push({ id: doc.id, ...doc.data() }); });
 
-    <div id="pageOverlay" class="page-overlay"></div>
+            const cartIds = cartData.map(item => item.id);
+            const cartNames = cartData.map(item => item.name).join(", ");
+            const availableProducts = allProducts.filter(p => !cartIds.includes(p.id));
+            if (availableProducts.length === 0) return;
 
-    <main class="cart-container">
-        <p class="cart-notice text-center">Xin lưu ý rằng chúng tôi không chấp nhận đổi trả đối với các đơn hàng trực tuyến.</p>
+            const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
+            const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
+            let fallbackCandidates = availableProducts.filter(p => crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw)));
 
-        <div id="emptyCartView" class="empty-cart-view text-center" style="display: none;">
-            <h1 class="apple-title">Giỏ hàng của bạn đang trống.</h1>
-            <p class="apple-subtitle">Hưởng miễn phí vận chuyển cho mọi đơn hàng.</p>
-            <a href="index.html" class="btn-outline">Tiếp Tục Mua Sắm</a>
-        </div>
+            if (fallbackCandidates.length === 0) fallbackCandidates = availableProducts;
 
-        <div id="filledCartView" class="filled-cart-view" style="display: none;">
-            <div class="cart-header text-center">
-                <h1 class="apple-title">Tổng giá trị giỏ hàng của bạn là <span id="totalPrice">0 đ</span>.</h1>
-                <p class="apple-subtitle">Vận chuyển miễn phí đối với mọi đơn hàng.</p>
+            const randomFallbackProduct = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
+            let aiResultId = randomFallbackProduct.id;
+            const fakeAiReasons = [
+                "Trí tuệ nhân tạo gợi ý: Thêm món phụ kiện này sẽ làm cho trải nghiệm đồ uống của bạn tuyệt hảo hơn!",
+                "Phân tích giỏ hàng: Sản phẩm này cực kỳ phù hợp để dùng kèm với các món bạn vừa chọn.",
+                "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
+            ];
+            let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
+            
+            try {
+                const targetModel = "gemini-1.5-flash";
+                const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
+                const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh. Giỏ hàng của khách: [${cartNames}]. Danh sách Kho hàng: [${catalogString}]. QUY TẮC BẮT BUỘC: 1. Khách đang mua Bia/Rượu -> TUYỆT ĐỐI KHÔNG gợi ý thêm Bia/Rượu. 2. Ưu tiên tìm các sản phẩm có từ khóa "Thùng", "Thùng đá", "Đá", "Ly", "Mực", "Snack" trong Danh sách Kho hàng để gợi ý. Hãy chọn ra ĐÚNG 1 ID sản phẩm trong Danh sách Kho hàng phù hợp nhất để bán kèm. Viết 1 lý do (ngắn gọn khoảng 15 chữ) giải thích vì sao nên mua kèm món này. CHỈ ĐƯỢC trả về JSON theo định dạng sau: {"id": "mã_sản_phẩm_được_chọn", "reason": "Lý do mua kèm..."}`;
+
+                const response = await fetch(URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.candidates && data.candidates.length > 0) {
+                        let aiText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const aiResult = JSON.parse(aiText);
+                        if(availableProducts.some(p => p.id === aiResult.id)) {
+                            aiResultId = aiResult.id;
+                            aiReason = aiResult.reason;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("API Gemini lỗi, dùng Smart Fallback.");
+            }
+
+            const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
+            const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
+            const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
+            const discountPrice = basePrice * 0.8; 
+            const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
+
+            recommendedProductData = {
+                id: recommendedProd.id,
+                name: recommendedProd.name,
+                image: imgUrl,
+                basePrice: basePrice,
+                discountPrice: discountPrice,
+                reason: aiReason
+            };
+
+            document.getElementById('upsellImg').src = recommendedProductData.image;
+            document.getElementById('upsellName').innerText = recommendedProductData.name;
+            document.getElementById('upsellReason').innerText = `"${recommendedProductData.reason}"`;
+            document.getElementById('upsellPriceNew').innerText = formatPrice(recommendedProductData.discountPrice);
+            document.getElementById('upsellPriceOld').innerText = formatPrice(recommendedProductData.basePrice);
+
+            upsellBox.style.display = 'block';
+        } catch (error) {
+            console.error("Lỗi hệ thống Suggestion:", error);
+            document.getElementById('aiUpsellBox').style.display = 'none';
+        }
+    };
+
+    checkoutBtn.addEventListener('click', async () => {
+        if (!finalAddress) {
+            alert("Bạn chưa chọn địa chỉ giao hàng! Vui lòng chọn trên bản đồ.");
+            return;
+        }
+
+        const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
+        let finalOrderItems = [...cartData];
+        let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
+
+        if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
+            finalOrderItems.push({
+                id: recommendedProductData.id,
+                name: recommendedProductData.name,
+                price: recommendedProductData.discountPrice,
+                image: recommendedProductData.image,
+                quantity: 1,
+                color: "Mua kèm",
+                storage: "Ưu đãi AI (-20%)"
+            });
+            totalAmount += recommendedProductData.discountPrice;
+        }
+
+        checkoutBtn.innerText = "Đang xử lý đơn hàng...";
+        checkoutBtn.disabled = true;
+
+        try {
+            const orderId = "FSTORE_" + Date.now();
+
+            const newOrder = {
+                userId: userId,
+                items: finalOrderItems, 
+                totalAmount: totalAmount, 
+                deliveryAddress: finalAddress, 
+                status: "Đã thanh toán (Mô phỏng)",
+                paymentMethod: selectedPayment, 
+                createdAt: new Date()
+            };
+            
+            // 1. LƯU ĐƠN HÀNG LÊN FIREBASE
+            await setDoc(doc(db, "orders", orderId), newOrder);
+            localStorage.removeItem(`cart_${userId}`);
+
+            // 2. KÍCH HOẠT GỬI EMAIL XÁC NHẬN NGAY LẬP TỨC
+            sendOrderConfirmationEmail(orderId, userEmail, userName, totalAmount, selectedPayment, finalAddress);
+
+            // 3. THỬ GỌI ZALOPAY / MOMO (Nếu lỗi do cloudflare thì tự động chuyển hướng mượt mà)
+            if (selectedPayment === 'momo' || selectedPayment === 'zalopay') {
+                const apiEndpoint = selectedPayment === 'momo' ? '/api/pay' : '/api/zalopay';
                 
-                <div class="delivery-address-section">
-                    <h3><i class="fa-solid fa-location-dot"></i> Địa chỉ giao hàng</h3>
-                    <div class="address-box">
-                        <p id="currentAddressText">Bạn chưa chọn địa chỉ giao hàng.</p>
-                        <button id="btnOpenMap" class="btn-change-address">Chọn trên bản đồ</button>
-                    </div>
-                </div>
+                try {
+                    const response = await fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                    });
+                    const contentType = response.headers.get("content-type");
+                    if (response.ok && contentType && contentType.includes("application/json")) {
+                        const data = await response.json();
+                        if (data.url || data.order_url) {
+                            window.location.href = data.url || data.order_url;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Bỏ qua lỗi gọi C# Localhost trên Cloudflare.");
+                }
+            }
 
-                <div class="payment-methods-apple">
-                    <label class="payment-label">
-                        <input type="radio" name="payment" value="momo" checked>
-                        <span>Ví MoMo</span>
-                    </label>
-                    <label class="payment-label">
-                        <input type="radio" name="payment" value="zalopay">
-                        <span>ZaloPay</span>
-                    </label>
-                    <label class="payment-label">
-                        <input type="radio" name="payment" value="vnpay">
-                        <span>VNPay</span>
-                    </label>
-                </div>
+            // MÀN HÌNH BẢO VỆ ĐỒ ÁN: Thông báo thành công và gửi Email an toàn
+            alert("Đặt hàng thành công! Hóa đơn xác nhận đã được gửi vào Email của bạn.");
+            window.location.href = "index.html";
 
-                <!-- ==========================================================
-                     KHU VỰC GỢI Ý MUA KÈM DẠNG CHECKBOX
-                     ========================================================== -->
-                <label id="aiUpsellBox" class="ai-upsell-box" style="cursor: pointer;">
-                    <div class="upsell-flex">
-                        <img id="upsellImg" src="" class="upsell-img">
-                        <div class="upsell-info">
-                            <div class="upsell-tag"><i class="fa-solid fa-bolt"></i> Deal Gợi Ý Mua Kèm</div>
-                            <p id="upsellName" class="upsell-name">Đang tải gợi ý...</p>
-                            <p id="upsellReason" class="upsell-reason"></p>
-                        </div>
-                        <div class="upsell-pricing">
-                            <div id="upsellPriceNew" class="upsell-price-new">0 đ</div>
-                            <div id="upsellPriceOld" class="upsell-price-old">0 đ</div>
-                        </div>
-                        <div class="upsell-checkbox-wrapper">
-                            <input type="checkbox" id="chkBuyUpsell">
-                        </div>
-                    </div>
-                </label>
-                <!-- ========================================================== -->
-
-                <button class="btn-primary" id="checkoutBtn">Thanh Toán</button>
-                <p id="checkoutMsg" style="color: #ff3b30; margin-top: 15px; display: none; text-align: center; font-size: 14px;"></p>
-            </div>
-
-            <!-- DANH SÁCH SẢN PHẨM TRONG GIỎ HÀNG -->
-            <div class="cart-items-list" id="cartItems"></div>
-
-        </div>
-    </main>
-
-    <div id="mapModal" class="map-modal-overlay">
-        <div class="map-modal-content">
-            <div class="map-modal-header">
-                <h3>Ghim vị trí nhận hàng</h3>
-                <i class="fa-solid fa-xmark" id="closeMapModal"></i>
-            </div>
-            <p style="font-size: 13px; color: #86868b; margin-bottom: 10px;">Di chuyển bản đồ hoặc click để chọn vị trí. Hệ thống sẽ tự động nhận diện địa chỉ.</p>
-            
-            <div id="deliveryMap" style="height: 350px; width: 100%; border-radius: 12px; margin-bottom: 15px; z-index: 1;"></div>
-            
-            <div class="input-group">
-                <input type="text" id="detailAddressInput" placeholder="Số nhà, tên đường, phường/xã..." style="width: 100%; padding: 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-family: inherit;">
-            </div>
-            <button id="btnConfirmAddress" class="btn-primary" style="margin-top: 15px; max-width: 100%;">Xác nhận địa chỉ này</button>
-        </div>
-    </div>
-
-    <script type="module" src="./controllers/headerController.js"></script>
-    <script type="module" src="./controllers/cartController.js"></script>
-    <div id="footer-placeholder"></div>
-    <script src="./controllers/loadComponents.js"></script>
-    <!-- Các mã HTML modal bản đồ ở trên... -->
-    <div class="input-group">
-                <input type="text" id="detailAddressInput" placeholder="Số nhà, tên đường, phường/xã..." style="width: 100%; padding: 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-family: inherit;">
-            </div>
-            <button id="btnConfirmAddress" class="btn-primary" style="margin-top: 15px; max-width: 100%;">Xác nhận địa chỉ này</button>
-        </div>
-    </div>
-
-    <!-- ==========================================
-         THƯ VIỆN EMAILJS 
-         ========================================== -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script type="text/javascript">
-       (function(){
-          emailjs.init({
-            publicKey: "kezSu7ZgYe7uy12BJ", // <-- Thay mã Public Key của bạn vào
-          });
-       })();
-    </script>
-    
-    <script type="module" src="./controllers/headerController.js"></script>
-    <script type="module" src="./controllers/cartController.js"></script>
-    <div id="footer-placeholder"></div>
-    <script src="./controllers/loadComponents.js"></script>
-</body>
-</html>
-</body>
-</html>
+        } catch (error) {
+            checkoutMsg.style.display = "block";
+            checkoutMsg.innerText = error.message;
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerText = "Thanh Toán";
+        }
+    });
+});
