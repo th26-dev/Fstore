@@ -9,6 +9,8 @@
                 
                 footerPlaceholder.innerHTML = footerHTML;
             }
+
+            
         } catch (error) {
             console.error("Lỗi khi tải Footer:", error);
         }
