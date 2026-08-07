@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let cartData = [];
     let userId = null;
     let userEmail = ""; 
-    let userName = "";  
+    let userName = ""; 
     let currentCartSignature = ""; 
 
     // Biến cho phần AI Upsell
@@ -97,8 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
-            userEmail = user.email; // Lấy email người dùng
-            userName = user.displayName || "Quý khách"; // Lấy tên người dùng
+            userEmail = user.email; // Đã thêm lấy Email
+            userName = user.displayName || "Quý khách"; // Đã thêm lấy Tên
 
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
         
@@ -335,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalAmount += recommendedProductData.discountPrice;
         }
 
-        checkoutBtn.innerText = "Đang xử lý...";
+        checkoutBtn.innerText = "Đang kết nối cổng thanh toán...";
         checkoutBtn.disabled = true;
 
         try {
@@ -351,13 +350,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
-            // 1. LƯU ĐƠN HÀNG VÀO FIREBASE
+            // LƯU ĐƠN HÀNG LÊN FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // =========================================================================
-            // 2. LƯU TẠM DỮ LIỆU EMAIL ĐỂ GỬI SAU KHI ZALOPAY THANH TOÁN THÀNH CÔNG
-            // =========================================================================
+            // ==============================================================
+            // MỚI THÊM: Gói thông tin Email lại và cất vào LocalStorage
+            // ==============================================================
             const emailParams = {
                 to_email: userEmail,
                 customer_name: userName,
@@ -367,9 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 delivery_address: finalAddress
             };
             localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
-            // =========================================================================
+            // ==============================================================
 
-            // 3. GỌI API THANH TOÁN GỐC CỦA BẠN (KHÔNG CHỈNH SỬA)
+            // ĐOẠN FETCH NÀY 100% LÀ CODE CŨ CỦA BẠN (ĐỂ KHÔNG LÀM HỎNG ZALOPAY)
             if (selectedPayment === 'momo') {
                 const response = await fetch('/api/pay', {
                     method: 'POST',
