@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let cartData = [];
     let userId = null;
+    
+    // ĐÂY LÀ 2 BIẾN QUAN TRỌNG ĐỂ GỬI EMAIL MÀ BẠN BỊ THIẾU
+    let userEmail = ""; 
+    let userName = "";  
+    
     let currentCartSignature = ""; 
 
     // Biến cho phần AI Upsell
@@ -95,6 +100,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
+            
+            // LẤY EMAIL VÀ TÊN NGƯỜI DÙNG TỪ FIREBASE ĐỂ LÁT NỮA GỬI MAIL
+            userEmail = user.email || "khachhang@example.com"; 
+            userName = user.displayName || "Quý khách"; 
+
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
             if (savedCart && JSON.parse(savedCart).length > 0) {
@@ -108,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
         
@@ -187,9 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // =========================================================================
-    // HỆ THỐNG GỢI Ý MUA KÈM DẠNG CHECKBOX (CÓ BẢO HIỂM LỖI API)
-    // =========================================================================
     const triggerAIRecommendations = () => {
         const newSignature = cartData.map(item => item.id).sort().join(',');
         if (newSignature !== currentCartSignature && newSignature !== "") {
@@ -218,16 +224,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (availableProducts.length === 0) return;
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
-            
-            // KỊCH BẢN BẢO HIỂM THÔNG MINH (SMART FALLBACK):
-            // Ưu tiên tìm các món phụ kiện/đồ nhắm trong kho (Thùng đá, Ly, Khô mực...) thay vì lấy random
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
             
             let fallbackCandidates = availableProducts.filter(p => 
                 crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
             );
 
-            // Nếu trong kho không có phụ kiện nào, lúc này mới bốc ngẫu nhiên
             if (fallbackCandidates.length === 0) {
                 fallbackCandidates = availableProducts;
             }
@@ -240,12 +242,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
             ];
             let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
-            // Gọi API Gemini
+            
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
                 
-                // CẬP NHẬT SYSTEM PROMPT "THIẾT QUÂN LUẬT" CHO AI
                 const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
                 Giỏ hàng của khách: [${cartNames}].
                 Danh sách Kho hàng: [${catalogString}].
@@ -283,12 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
             }
 
-            // Gắn dữ liệu hiển thị
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
             
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
-            const discountPrice = basePrice * 0.8; // Giảm mạnh 20% khi mua kèm
+            const discountPrice = basePrice * 0.8; 
             const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
 
             recommendedProductData = {
@@ -313,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('aiUpsellBox').style.display = 'none';
         }
     };
-    // =========================================================================
 
     checkoutBtn.addEventListener('click', async () => {
         if (!finalAddress) {
@@ -358,7 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // BẮT BUỘC PHẢI CÓ ĐOẠN NÀY ĐỂ GỬI ĐƯỢC EMAIL
+            // ==============================================================
+            // GÓI THÔNG TIN EMAIL VÀ CẤT VÀO BỘ NHỚ TẠM
+            // ==============================================================
             const emailParams = {
                 to_email: userEmail,
                 customer_name: userName,
@@ -368,17 +369,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 delivery_address: finalAddress
             };
             localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
+            // ==============================================================
 
-            // GỌI API THANH TOÁN
+            // GỌI API THANH TOÁN (GIỮ NGUYÊN GỐC KHÔNG SỬA)
             if (selectedPayment === 'momo') {
                 const response = await fetch('/api/pay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: totalAmount, orderId: orderId })
                 });
+
                 const data = await response.json();
-                if (data.url) window.location.href = data.url; 
-                else throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+
+                if (data.url) {
+                    window.location.href = data.url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+                }
 
             } else if (selectedPayment === 'zalopay') {
                 localStorage.setItem('pending_zalopay_order_id', orderId);
@@ -387,14 +394,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/zalopay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: totalAmount, orderInfo: orderInfo, orderId: orderId })
+                    body: JSON.stringify({ 
+                        amount: totalAmount, 
+                        orderInfo: orderInfo, 
+                        orderId: orderId 
+                    })
                 });
+
                 const data = await response.json();
-                if (data.order_url) window.location.href = data.order_url; 
-                else throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+
+                if (data.order_url) {
+                    window.location.href = data.order_url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                }
                 
             } else {
-                alert(`Phương thức thanh toán đang được bảo trì.`);
+                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerText = "Thanh Toán";
             }
