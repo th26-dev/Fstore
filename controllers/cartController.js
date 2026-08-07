@@ -3,6 +3,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // === CẤU HÌNH API KEY GEMINI ===
     const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
 
     const cartItemsContainer = document.getElementById('cartItems');
@@ -19,9 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let userName = "";  
     let currentCartSignature = ""; 
 
+    // Biến cho phần AI Upsell
     let recommendedProductData = null; 
     const chkBuyUpsell = document.getElementById('chkBuyUpsell');
 
+    // Biến cho Bản đồ
     let map = null;
     let marker = null;
     let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
@@ -31,28 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapModal = document.getElementById('mapModal');
     
     if (finalAddress) currentAddressText.innerText = finalAddress;
-
-    // =========================================================================
-    // HÀM GỬI EMAIL XÁC NHẬN QUA EMAILJS NGAY KHI KHÁCH THANH TOÁN
-    // =========================================================================
-    const sendOrderConfirmationEmail = (orderId, customerEmail, customerName, totalAmount, paymentMethod, deliveryAddress) => {
-        const templateParams = {
-            to_email: customerEmail,
-            customer_name: customerName,
-            order_id: orderId,
-            total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
-            payment_method: paymentMethod.toUpperCase(),
-            delivery_address: deliveryAddress
-        };
-
-        // GỌI API EMAILJS (Đảm bảo Public Key ở file HTML và Service ID ở đây đã khớp)
-        emailjs.send('service_xxxxx', 'template_ansuc2l', templateParams)
-            .then(function(response) {
-                console.log('✅ ĐÃ GỬI EMAIL HÓA ĐƠN THÀNH CÔNG!', response.status, response.text);
-            }, function(error) {
-                console.error('❌ LỖI GỬI EMAIL:', error);
-            });
-    };
 
     async function getAddressFromCoords(lat, lng) {
         detailAddressInput.value = "Đang tìm địa chỉ...";
@@ -116,8 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
-            userEmail = user.email; 
-            userName = user.displayName || "Quý khách"; 
+            userEmail = user.email; // Lấy email người dùng
+            userName = user.displayName || "Quý khách"; // Lấy tên người dùng
 
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
@@ -132,11 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             total += recommendedProductData.discountPrice;
         }
+        
         totalPriceEl.innerText = formatPrice(total);
     };
 
@@ -149,8 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
         filledCartView.style.display = 'block';
 
         let html = '';
+        
         cartData.forEach((item, index) => {
             if (!item.quantity) item.quantity = 1;
+
             html += `
                 <div class="cart-item">
                     <img src="${item.image}" alt="${item.name}" class="cart-item-img">
@@ -173,8 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         cartItemsContainer.innerHTML = html;
+        
         if (chkBuyUpsell) chkBuyUpsell.checked = false; 
         updateTotalPriceDisplay();
+
         triggerAIRecommendations();
 
         document.querySelectorAll('.qty-select').forEach(select => {
@@ -215,23 +203,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAIRecommendations = async () => {
         const upsellBox = document.getElementById('aiUpsellBox');
         if (!upsellBox || cartData.length === 0) return;
+
         upsellBox.style.display = 'none';
 
         try {
             const productsSnapshot = await getDocs(collection(db, "products"));
             let allProducts = [];
-            productsSnapshot.forEach(doc => { allProducts.push({ id: doc.id, ...doc.data() }); });
+            productsSnapshot.forEach(doc => {
+                allProducts.push({ id: doc.id, ...doc.data() });
+            });
 
             const cartIds = cartData.map(item => item.id);
             const cartNames = cartData.map(item => item.name).join(", ");
             const availableProducts = allProducts.filter(p => !cartIds.includes(p.id));
+            
             if (availableProducts.length === 0) return;
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
+            
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
-            let fallbackCandidates = availableProducts.filter(p => crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw)));
+            
+            let fallbackCandidates = availableProducts.filter(p => 
+                crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
+            );
 
-            if (fallbackCandidates.length === 0) fallbackCandidates = availableProducts;
+            if (fallbackCandidates.length === 0) {
+                fallbackCandidates = availableProducts;
+            }
 
             const randomFallbackProduct = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
             let aiResultId = randomFallbackProduct.id;
@@ -245,7 +243,19 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
-                const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh. Giỏ hàng của khách: [${cartNames}]. Danh sách Kho hàng: [${catalogString}]. QUY TẮC BẮT BUỘC: 1. Khách đang mua Bia/Rượu -> TUYỆT ĐỐI KHÔNG gợi ý thêm Bia/Rượu. 2. Ưu tiên tìm các sản phẩm có từ khóa "Thùng", "Thùng đá", "Đá", "Ly", "Mực", "Snack" trong Danh sách Kho hàng để gợi ý. Hãy chọn ra ĐÚNG 1 ID sản phẩm trong Danh sách Kho hàng phù hợp nhất để bán kèm. Viết 1 lý do (ngắn gọn khoảng 15 chữ) giải thích vì sao nên mua kèm món này. CHỈ ĐƯỢC trả về JSON theo định dạng sau: {"id": "mã_sản_phẩm_được_chọn", "reason": "Lý do mua kèm..."}`;
+                
+                const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
+                Giỏ hàng của khách: [${cartNames}].
+                Danh sách Kho hàng: [${catalogString}].
+                
+                QUY TẮC BẮT BUỘC (NẾU VI PHẠM SẼ BỊ LỖI HỆ THỐNG):
+                1. Khách đang mua Bia/Rượu -> TUYỆT ĐỐI KHÔNG gợi ý thêm Bia/Rượu.
+                2. Ưu tiên tìm các sản phẩm có từ khóa "Thùng", "Thùng đá", "Đá", "Ly", "Mực", "Snack" trong Danh sách Kho hàng để gợi ý.
+                
+                Hãy chọn ra ĐÚNG 1 ID sản phẩm trong Danh sách Kho hàng phù hợp nhất để bán kèm. 
+                Viết 1 lý do (ngắn gọn khoảng 15 chữ) giải thích vì sao nên mua kèm món này.
+                
+                CHỈ ĐƯỢC trả về JSON theo định dạng sau: {"id": "mã_sản_phẩm_được_chọn", "reason": "Lý do mua kèm..."}`;
 
                 const response = await fetch(URL, {
                     method: "POST",
@@ -258,17 +268,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.candidates && data.candidates.length > 0) {
                         let aiText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                         const aiResult = JSON.parse(aiText);
+                        
                         if(availableProducts.some(p => p.id === aiResult.id)) {
                             aiResultId = aiResult.id;
                             aiReason = aiResult.reason;
                         }
                     }
+                } else {
+                    console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
                 }
             } catch (err) {
-                console.warn("API Gemini lỗi, dùng Smart Fallback.");
+                console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
             }
 
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
+            
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
             const discountPrice = basePrice * 0.8; 
@@ -290,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('upsellPriceOld').innerText = formatPrice(recommendedProductData.basePrice);
 
             upsellBox.style.display = 'block';
+
         } catch (error) {
             console.error("Lỗi hệ thống Suggestion:", error);
             document.getElementById('aiUpsellBox').style.display = 'none';
@@ -303,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
+        
         let finalOrderItems = [...cartData];
         let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
 
@@ -319,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalAmount += recommendedProductData.discountPrice;
         }
 
-        checkoutBtn.innerText = "Đang xử lý đơn hàng...";
+        checkoutBtn.innerText = "Đang xử lý...";
         checkoutBtn.disabled = true;
 
         try {
@@ -330,44 +346,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 items: finalOrderItems, 
                 totalAmount: totalAmount, 
                 deliveryAddress: finalAddress, 
-                status: "Đã thanh toán (Mô phỏng)",
+                status: "Chờ thanh toán",
                 paymentMethod: selectedPayment, 
                 createdAt: new Date()
             };
             
-            // 1. LƯU ĐƠN HÀNG LÊN FIREBASE
+            // 1. LƯU ĐƠN HÀNG VÀO FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // 2. KÍCH HOẠT GỬI EMAIL XÁC NHẬN NGAY LẬP TỨC
-            sendOrderConfirmationEmail(orderId, userEmail, userName, totalAmount, selectedPayment, finalAddress);
+            // =========================================================================
+            // 2. LƯU TẠM DỮ LIỆU EMAIL ĐỂ GỬI SAU KHI ZALOPAY THANH TOÁN THÀNH CÔNG
+            // =========================================================================
+            const emailParams = {
+                to_email: userEmail,
+                customer_name: userName,
+                order_id: orderId,
+                total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+                payment_method: selectedPayment.toUpperCase(),
+                delivery_address: finalAddress
+            };
+            localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
+            // =========================================================================
 
-            // 3. THỬ GỌI ZALOPAY / MOMO (Nếu lỗi do cloudflare thì tự động chuyển hướng mượt mà)
-            if (selectedPayment === 'momo' || selectedPayment === 'zalopay') {
-                const apiEndpoint = selectedPayment === 'momo' ? '/api/pay' : '/api/zalopay';
-                
-                try {
-                    const response = await fetch(apiEndpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ amount: totalAmount, orderId: orderId })
-                    });
-                    const contentType = response.headers.get("content-type");
-                    if (response.ok && contentType && contentType.includes("application/json")) {
-                        const data = await response.json();
-                        if (data.url || data.order_url) {
-                            window.location.href = data.url || data.order_url;
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Bỏ qua lỗi gọi C# Localhost trên Cloudflare.");
+            // 3. GỌI API THANH TOÁN GỐC CỦA BẠN (KHÔNG CHỈNH SỬA)
+            if (selectedPayment === 'momo') {
+                const response = await fetch('/api/pay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                });
+
+                const data = await response.json();
+
+                if (data.url) {
+                    window.location.href = data.url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
                 }
-            }
 
-            // MÀN HÌNH BẢO VỆ ĐỒ ÁN: Thông báo thành công và gửi Email an toàn
-            alert("Đặt hàng thành công! Hóa đơn xác nhận đã được gửi vào Email của bạn.");
-            window.location.href = "index.html";
+            } else if (selectedPayment === 'zalopay') {
+                localStorage.setItem('pending_zalopay_order_id', orderId);
+                const orderInfo = finalOrderItems.map(item => item.name).join(', ');
+                
+                const response = await fetch('/api/zalopay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: totalAmount, 
+                        orderInfo: orderInfo, 
+                        orderId: orderId 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.order_url) {
+                    window.location.href = data.order_url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                }
+                
+            } else {
+                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerText = "Thanh Toán";
+            }
 
         } catch (error) {
             checkoutMsg.style.display = "block";

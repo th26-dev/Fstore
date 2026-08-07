@@ -12,6 +12,16 @@
         .btn-home { display: inline-block; margin-top: 30px; padding: 12px 25px; background: #0071e3; color: #fff; border-radius: 20px; text-decoration: none; }
         #loadingMsg { color: #86868b; margin-top: 15px; }
     </style>
+
+    <!-- THÊM THƯ VIỆN EMAILJS VÀ PUBLIC KEY -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+       (function(){
+          emailjs.init({
+            publicKey: "kezSu7ZgYe7uy12BJ", // Public Key của bạn
+          });
+       })();
+    </script>
 </head>
 <body>
     <div class="success-box">
@@ -35,8 +45,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const resultCode = urlParams.get('resultCode'); 
             
-            // LẤY ĐÚNG MÃ TỪ TRÊN THANH URL CỦA MOMO TRẢ VỀ
-            const orderId = urlParams.get('orderId');
+            // Lấy status từ ZaloPay trả về
+            const zaloStatus = urlParams.get('status'); 
+            const orderId = urlParams.get('orderId') || localStorage.getItem('pending_zalopay_order_id');
 
             const statusTitle = document.getElementById('statusTitle');
             const statusDesc = document.getElementById('statusDesc');
@@ -49,38 +60,64 @@
                 statusIcon.className = "fa-solid fa-circle-question";
                 statusIcon.style.color = "#86868b";
                 statusTitle.innerText = "Không tìm thấy mã đơn hàng!";
-                statusDesc.innerText = "Giao dịch không hợp lệ hoặc không có mã trả về từ MoMo.";
+                statusDesc.innerText = "Giao dịch không hợp lệ hoặc không có mã trả về từ cổng thanh toán.";
                 loadingMsg.style.display = "none";
                 btnHome.style.display = "inline-block";
                 return;
             }
 
-            // Đợi xác thực Firebase xong mới cập nhật
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const orderRef = doc(db, "orders", orderId);
                     try {
-                        if (resultCode === "0") {
+                        // KIỂM TRA ĐIỀU KIỆN THÀNH CÔNG (MoMo: 0 hoặc ZaloPay: 1)
+                        if (resultCode === "0" || zaloStatus === "1") {
                             await updateDoc(orderRef, { status: "Đã thanh toán" });
                             
                             statusIcon.className = "fa-solid fa-circle-check";
                             statusIcon.style.color = "#34c759";
                             statusTitle.innerText = "Cảm ơn bạn đã đặt hàng!";
-                            statusDesc.innerText = `Giao dịch đơn hàng của bạn đã được xử lý thành công.`;
+                            statusDesc.innerText = `Đang gửi hóa đơn về Email của bạn...`;
+
+                            // =======================================================
+                            // GỌI EMAILJS GỬI THƯ BÁO CÁO NGAY SAU KHI CẬP NHẬT FIREBASE
+                            // =======================================================
+                            const pendingEmailData = localStorage.getItem('fstore_pending_email');
+                            
+                            if (pendingEmailData) {
+                                const templateParams = JSON.parse(pendingEmailData);
+
+                                // NHỚ THAY SERVICE_ID CỦA BẠN VÀO ĐÂY NHÉ! (Vd: service_xxxxx)
+                                emailjs.send('ĐIỀN_SERVICE_ID_CỦA_BẠN_VÀO_ĐÂY', 'template_ansuc2l', templateParams)
+                                    .then(function() {
+                                        console.log('✅ Gửi Email thành công!');
+                                        statusDesc.innerText = `Giao dịch thành công. Hóa đơn xác nhận đã được gửi về Email của bạn.`;
+                                        localStorage.removeItem('fstore_pending_email'); // Gửi xong thì xóa bộ nhớ tạm
+                                    })
+                                    .catch(function(error) {
+                                        console.error('❌ Lỗi gửi Email:', error);
+                                        statusDesc.innerText = `Giao dịch thành công, nhưng có lỗi khi gửi Email hóa đơn.`;
+                                    });
+                            } else {
+                                statusDesc.innerText = `Giao dịch đơn hàng của bạn đã được xử lý thành công.`;
+                            }
+                            
                         } else {
+                            // THANH TOÁN BỊ HỦY HOẶC THẤT BẠI
                             await updateDoc(orderRef, { status: "Đã hủy" });
                             
                             statusIcon.className = "fa-solid fa-circle-xmark";
                             statusIcon.style.color = "#ff3b30";
                             statusTitle.innerText = "Thanh toán thất bại hoặc đã bị hủy!";
                             statusDesc.innerText = "Giao dịch không thành công, đơn hàng của bạn đã bị hủy.";
+                            localStorage.removeItem('fstore_pending_email'); // Hủy thao tác gửi email
                         }
                     } catch (error) {
                         console.error("LỖI CẬP NHẬT FIREBASE:", error);
                         statusIcon.className = "fa-solid fa-triangle-exclamation";
                         statusIcon.style.color = "#f59e0b";
                         statusTitle.innerText = "Đã nhận tiền nhưng lỗi đồng bộ!";
-                        statusDesc.innerText = "Nhấn F12 mở tab Console để xem lỗi. Thường do Rules của Firebase hoặc Adblock chặn update.";
+                        statusDesc.innerText = "Nhấn F12 mở tab Console để xem lỗi.";
                     }
                 } else {
                     statusIcon.className = "fa-solid fa-circle-xmark";
