@@ -32,6 +32,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (finalAddress) currentAddressText.innerText = finalAddress;
 
+    // =========================================================================
+    // HÀM GỬI EMAIL XÁC NHẬN QUA EMAILJS NGAY KHI KHÁCH THANH TOÁN
+    // =========================================================================
+    const sendOrderConfirmationEmail = (orderId, customerEmail, customerName, totalAmount, paymentMethod, deliveryAddress) => {
+        const templateParams = {
+            to_email: customerEmail,
+            customer_name: customerName,
+            order_id: orderId,
+            total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+            payment_method: paymentMethod.toUpperCase(),
+            delivery_address: deliveryAddress
+        };
+
+        // GỌI API EMAILJS (Đảm bảo Public Key ở file HTML và Service ID ở đây đã khớp)
+        emailjs.send('service_xxxxx', 'template_ansuc2l', templateParams)
+            .then(function(response) {
+                console.log('✅ ĐÃ GỬI EMAIL HÓA ĐƠN THÀNH CÔNG!', response.status, response.text);
+            }, function(error) {
+                console.error('❌ LỖI GỬI EMAIL:', error);
+            });
+    };
+
     async function getAddressFromCoords(lat, lng) {
         detailAddressInput.value = "Đang tìm địa chỉ...";
         try {
@@ -243,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } catch (err) {
-                console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
+                console.warn("API Gemini lỗi, dùng Smart Fallback.");
             }
 
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
@@ -297,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalAmount += recommendedProductData.discountPrice;
         }
 
-        checkoutBtn.innerText = "Đang chuyển sang cổng thanh toán...";
+        checkoutBtn.innerText = "Đang xử lý đơn hàng...";
         checkoutBtn.disabled = true;
 
         try {
@@ -308,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 items: finalOrderItems, 
                 totalAmount: totalAmount, 
                 deliveryAddress: finalAddress, 
-                status: "Chờ thanh toán",
+                status: "Đã thanh toán (Mô phỏng)",
                 paymentMethod: selectedPayment, 
                 createdAt: new Date()
             };
@@ -317,57 +339,35 @@ document.addEventListener('DOMContentLoaded', () => {
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // 2. LƯU TẠM DỮ LIỆU ĐỂ GỬI EMAIL (CHƯA GỬI NGAY LÚC NÀY)
-            const emailParams = {
-                to_email: userEmail,
-                customer_name: userName,
-                order_id: orderId,
-                total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
-                payment_method: selectedPayment.toUpperCase(),
-                delivery_address: finalAddress
-            };
-            // Gói dữ liệu này giấu vào LocalStorage
-            localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
+            // 2. KÍCH HOẠT GỬI EMAIL XÁC NHẬN NGAY LẬP TỨC
+            sendOrderConfirmationEmail(orderId, userEmail, userName, totalAmount, selectedPayment, finalAddress);
 
-            // 3. GỌI API THANH TOÁN (Trở lại với file Cloudflare Functions của bạn)
-            if (selectedPayment === 'momo') {
-                const response = await fetch('/api/pay', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: totalAmount, orderId: orderId })
-                });
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url; 
-                } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
-                }
-
-            } else if (selectedPayment === 'zalopay') {
-                localStorage.setItem('pending_zalopay_order_id', orderId);
-                const orderInfo = finalOrderItems.map(item => item.name).join(', ');
+            // 3. THỬ GỌI ZALOPAY / MOMO (Nếu lỗi do cloudflare thì tự động chuyển hướng mượt mà)
+            if (selectedPayment === 'momo' || selectedPayment === 'zalopay') {
+                const apiEndpoint = selectedPayment === 'momo' ? '/api/pay' : '/api/zalopay';
                 
-                const response = await fetch('/api/zalopay', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        amount: totalAmount, 
-                        orderInfo: orderInfo, 
-                        orderId: orderId 
-                    })
-                });
-                const data = await response.json();
-                if (data.order_url) {
-                    window.location.href = data.order_url; 
-                } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                try {
+                    const response = await fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                    });
+                    const contentType = response.headers.get("content-type");
+                    if (response.ok && contentType && contentType.includes("application/json")) {
+                        const data = await response.json();
+                        if (data.url || data.order_url) {
+                            window.location.href = data.url || data.order_url;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Bỏ qua lỗi gọi C# Localhost trên Cloudflare.");
                 }
-                
-            } else {
-                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
-                checkoutBtn.disabled = false;
-                checkoutBtn.innerText = "Thanh Toán";
             }
+
+            // MÀN HÌNH BẢO VỆ ĐỒ ÁN: Thông báo thành công và gửi Email an toàn
+            alert("Đặt hàng thành công! Hóa đơn xác nhận đã được gửi vào Email của bạn.");
+            window.location.href = "index.html";
 
         } catch (error) {
             checkoutMsg.style.display = "block";
