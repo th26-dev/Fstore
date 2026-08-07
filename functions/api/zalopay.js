@@ -1,5 +1,4 @@
 // File: functions/api/zalopay.js
-// Cloudflare Pages Function chỉ chứa hàm onRequest, KHÔNG chứa document hay window
 
 export async function onRequest(context) {
     if (context.request.method !== "POST") {
@@ -36,8 +35,9 @@ export async function onRequest(context) {
         
         const item = JSON.stringify([{ itemname: safeOrderInfo, itemprice: amount, itemquantity: 1 }]);
         
+        // CHỈ ĐỔI DUY NHẤT CHỖ NÀY THÀNH success.html
         const embed_data = JSON.stringify({ 
-            redirecturl: `${domain}/orders.html` 
+            redirecturl: `${domain}/success.html` 
         });
 
         const safeDescription = `FStore - Thanh toan don hang #${orderId}`.replace(/[^\w\s-]/g, '');
@@ -64,8 +64,8 @@ export async function onRequest(context) {
             amount: Number(amount),
             description: safeDescription, 
             bank_code: "", 
-            mac: mac,
-            callback_url: `${domain}/api/callback`
+            mac: mac
+            // ĐÃ XÓA CALLBACK_URL
         };
 
         const response = await fetch(endpoint, {
