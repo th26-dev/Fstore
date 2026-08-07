@@ -6,9 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // === CẤU HÌNH API KEY GEMINI ===
     const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
 
-    // === CẤU HÌNH BACKEND C# ĐANG CHẠY TRÊN MÁY BẠN ===
-    const BACKEND_URL = "https://localhost:7079"; 
-
     const cartItemsContainer = document.getElementById('cartItems');
     const totalPriceEl = document.getElementById('totalPrice');
     const checkoutBtn = document.getElementById('checkoutBtn');
@@ -19,13 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let cartData = [];
     let userId = null;
-    let userEmail = ""; 
-    let userName = "";  
     let currentCartSignature = ""; 
 
+    // Biến cho phần AI Upsell
     let recommendedProductData = null; 
     const chkBuyUpsell = document.getElementById('chkBuyUpsell');
 
+    // Biến cho Bản đồ
     let map = null;
     let marker = null;
     let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
@@ -35,29 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapModal = document.getElementById('mapModal');
     
     if (finalAddress) currentAddressText.innerText = finalAddress;
-
-    // =========================================================================
-    // HÀM GỬI EMAIL HÓA ĐƠN QUA EMAILJS
-    // =========================================================================
-    const sendOrderConfirmationEmail = (orderId, customerEmail, customerName, totalAmount, paymentMethod, deliveryAddress) => {
-        const templateParams = {
-            to_email: customerEmail,
-            customer_name: customerName,
-            order_id: orderId,
-            total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
-            payment_method: paymentMethod.toUpperCase(),
-            delivery_address: deliveryAddress
-        };
-
-        // CHÚ Ý: ĐIỀN SERVICE_ID CỦA BẠN VÀO ĐÂY (Vd: service_xxxxx)
-        emailjs.send('ĐIỀN_SERVICE_ID_CỦA_BẠN_VÀO_ĐÂY', 'template_ansuc2l', templateParams)
-            .then(function(response) {
-                console.log('✅ ĐÃ GỬI EMAIL THÀNH CÔNG!', response.status, response.text);
-            }, function(error) {
-                console.error('❌ LỖI KHÔNG THỂ GỬI EMAIL:', error);
-            });
-    };
-    // =========================================================================
 
     async function getAddressFromCoords(lat, lng) {
         detailAddressInput.value = "Đang tìm địa chỉ...";
@@ -121,9 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
-            userEmail = user.email; 
-            userName = user.displayName || "Quý khách"; 
-
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
             if (savedCart && JSON.parse(savedCart).length > 0) {
@@ -137,11 +108,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             total += recommendedProductData.discountPrice;
         }
+        
         totalPriceEl.innerText = formatPrice(total);
     };
 
@@ -152,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderCart = () => {
         emptyCartView.style.display = 'none';
         filledCartView.style.display = 'block';
+
         let html = '';
         
         cartData.forEach((item, index) => {
@@ -182,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (chkBuyUpsell) chkBuyUpsell.checked = false; 
         updateTotalPriceDisplay();
+
         triggerAIRecommendations();
 
         document.querySelectorAll('.qty-select').forEach(select => {
@@ -211,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // =========================================================================
+    // HỆ THỐNG GỢI Ý MUA KÈM DẠNG CHECKBOX (CÓ BẢO HIỂM LỖI API)
+    // =========================================================================
     const triggerAIRecommendations = () => {
         const newSignature = cartData.map(item => item.id).sort().join(',');
         if (newSignature !== currentCartSignature && newSignature !== "") {
@@ -222,23 +201,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAIRecommendations = async () => {
         const upsellBox = document.getElementById('aiUpsellBox');
         if (!upsellBox || cartData.length === 0) return;
+
         upsellBox.style.display = 'none';
 
         try {
             const productsSnapshot = await getDocs(collection(db, "products"));
             let allProducts = [];
-            productsSnapshot.forEach(doc => { allProducts.push({ id: doc.id, ...doc.data() }); });
+            productsSnapshot.forEach(doc => {
+                allProducts.push({ id: doc.id, ...doc.data() });
+            });
 
             const cartIds = cartData.map(item => item.id);
             const cartNames = cartData.map(item => item.name).join(", ");
             const availableProducts = allProducts.filter(p => !cartIds.includes(p.id));
+            
             if (availableProducts.length === 0) return;
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
+            
+            // KỊCH BẢN BẢO HIỂM THÔNG MINH (SMART FALLBACK):
+            // Ưu tiên tìm các món phụ kiện/đồ nhắm trong kho (Thùng đá, Ly, Khô mực...) thay vì lấy random
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
-            let fallbackCandidates = availableProducts.filter(p => crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw)));
+            
+            let fallbackCandidates = availableProducts.filter(p => 
+                crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
+            );
 
-            if (fallbackCandidates.length === 0) fallbackCandidates = availableProducts;
+            // Nếu trong kho không có phụ kiện nào, lúc này mới bốc ngẫu nhiên
+            if (fallbackCandidates.length === 0) {
+                fallbackCandidates = availableProducts;
+            }
 
             const randomFallbackProduct = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
             let aiResultId = randomFallbackProduct.id;
@@ -248,11 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
             ];
             let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
-            
+            // Gọi API Gemini
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
                 
+                // CẬP NHẬT SYSTEM PROMPT "THIẾT QUÂN LUẬT" CHO AI
                 const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
                 Giỏ hàng của khách: [${cartNames}].
                 Danh sách Kho hàng: [${catalogString}].
@@ -283,15 +276,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             aiReason = aiResult.reason;
                         }
                     }
+                } else {
+                    console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
                 }
             } catch (err) {
-                console.warn("Mất mạng hoặc lỗi Fetch Gemini, dùng Smart Fallback.");
+                console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
             }
 
+            // Gắn dữ liệu hiển thị
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
+            
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
-            const discountPrice = basePrice * 0.8; 
+            const discountPrice = basePrice * 0.8; // Giảm mạnh 20% khi mua kèm
             const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
 
             recommendedProductData = {
@@ -316,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('aiUpsellBox').style.display = 'none';
         }
     };
+    // =========================================================================
 
     checkoutBtn.addEventListener('click', async () => {
         if (!finalAddress) {
@@ -328,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalOrderItems = [...cartData];
         let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
 
+        // NẾU CÓ TICK CHỌN THÌ GỘP VÀO ĐƠN HÀNG LÚC GỬI QUA MO/MO ZALOPAY
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             finalOrderItems.push({
                 id: recommendedProductData.id,
@@ -357,63 +356,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
-            // 1. LƯU ĐƠN HÀNG LÊN FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
-            // 2. GỬI EMAIL HÓA ĐƠN
-            sendOrderConfirmationEmail(orderId, userEmail, userName, totalAmount, selectedPayment, finalAddress);
-
-            // 3. XỬ LÝ THANH TOÁN (GỌI ĐẾN BACKEND C# LOCALHOST)
             if (selectedPayment === 'momo') {
-                try {
-                    const response = await fetch(`${BACKEND_URL}/api/pay`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ amount: totalAmount, orderId: orderId })
-                    });
+                const response = await fetch('/api/pay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.url) {
-                            window.location.href = data.url; 
-                        } else {
-                            throw new Error("Lỗi lấy Link từ MoMo");
-                        }
-                    } else {
-                        throw new Error("Backend C# trả về lỗi");
-                    }
-                } catch (err) {
-                    // MẸO CỨU CÁNH: Nếu chưa bật Backend C#, giả lập thành công để bảo vệ đồ án!
-                    alert("Đặt hàng thành công! Đã gửi hóa đơn về Email của bạn.");
-                    window.location.href = "index.html";
+                const data = await response.json();
+
+                if (data.url) {
+                    window.location.href = data.url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
                 }
 
             } else if (selectedPayment === 'zalopay') {
                 localStorage.setItem('pending_zalopay_order_id', orderId);
                 const orderInfo = finalOrderItems.map(item => item.name).join(', ');
                 
-                try {
-                    const response = await fetch(`${BACKEND_URL}/api/zalopay`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ amount: totalAmount, orderInfo: orderInfo, orderId: orderId })
-                    });
+                const response = await fetch('/api/zalopay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: totalAmount, 
+                        orderInfo: orderInfo, 
+                        orderId: orderId 
+                    })
+                });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.order_url) {
-                            window.location.href = data.order_url; 
-                        } else {
-                            throw new Error("Lỗi lấy Link ZaloPay");
-                        }
-                    } else {
-                        throw new Error("Backend C# trả về lỗi");
-                    }
-                } catch (err) {
-                    // MẸO CỨU CÁNH: Nếu chưa bật Backend C#, giả lập thành công!
-                    alert("Đặt hàng thành công! Đã gửi hóa đơn về Email của bạn.");
-                    window.location.href = "index.html"; 
+                const data = await response.json();
+
+                if (data.order_url) {
+                    window.location.href = data.order_url; 
+                } else {
+                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
                 }
                 
             } else {
@@ -423,9 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-            console.error(error);
             checkoutMsg.style.display = "block";
-            checkoutMsg.innerText = "Lỗi hệ thống khi tạo đơn hàng, vui lòng thử lại!";
+            checkoutMsg.innerText = error.message;
             checkoutBtn.disabled = false;
             checkoutBtn.innerText = "Thanh Toán";
         }
