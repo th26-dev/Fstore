@@ -3,7 +3,6 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // === CẤU HÌNH API KEY GEMINI ===
     const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
 
     const cartItemsContainer = document.getElementById('cartItems');
@@ -16,13 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let cartData = [];
     let userId = null;
+    let userEmail = ""; 
+    let userName = "";  
     let currentCartSignature = ""; 
 
-    // Biến cho phần AI Upsell
     let recommendedProductData = null; 
     const chkBuyUpsell = document.getElementById('chkBuyUpsell');
 
-    // Biến cho Bản đồ
     let map = null;
     let marker = null;
     let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
@@ -95,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
+            userEmail = user.email; 
+            userName = user.displayName || "Quý khách"; 
+
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
             if (savedCart && JSON.parse(savedCart).length > 0) {
@@ -108,14 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-        
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             total += recommendedProductData.discountPrice;
         }
-        
         totalPriceEl.innerText = formatPrice(total);
     };
 
@@ -128,10 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filledCartView.style.display = 'block';
 
         let html = '';
-        
         cartData.forEach((item, index) => {
             if (!item.quantity) item.quantity = 1;
-
             html += `
                 <div class="cart-item">
                     <img src="${item.image}" alt="${item.name}" class="cart-item-img">
@@ -154,10 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         cartItemsContainer.innerHTML = html;
-        
         if (chkBuyUpsell) chkBuyUpsell.checked = false; 
         updateTotalPriceDisplay();
-
         triggerAIRecommendations();
 
         document.querySelectorAll('.qty-select').forEach(select => {
@@ -187,9 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // =========================================================================
-    // HỆ THỐNG GỢI Ý MUA KÈM DẠNG CHECKBOX (CÓ BẢO HIỂM LỖI API)
-    // =========================================================================
     const triggerAIRecommendations = () => {
         const newSignature = cartData.map(item => item.id).sort().join(',');
         if (newSignature !== currentCartSignature && newSignature !== "") {
@@ -201,36 +193,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAIRecommendations = async () => {
         const upsellBox = document.getElementById('aiUpsellBox');
         if (!upsellBox || cartData.length === 0) return;
-
         upsellBox.style.display = 'none';
 
         try {
             const productsSnapshot = await getDocs(collection(db, "products"));
             let allProducts = [];
-            productsSnapshot.forEach(doc => {
-                allProducts.push({ id: doc.id, ...doc.data() });
-            });
+            productsSnapshot.forEach(doc => { allProducts.push({ id: doc.id, ...doc.data() }); });
 
             const cartIds = cartData.map(item => item.id);
             const cartNames = cartData.map(item => item.name).join(", ");
             const availableProducts = allProducts.filter(p => !cartIds.includes(p.id));
-            
             if (availableProducts.length === 0) return;
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
-            
-            // KỊCH BẢN BẢO HIỂM THÔNG MINH (SMART FALLBACK):
-            // Ưu tiên tìm các món phụ kiện/đồ nhắm trong kho (Thùng đá, Ly, Khô mực...) thay vì lấy random
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
-            
-            let fallbackCandidates = availableProducts.filter(p => 
-                crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
-            );
+            let fallbackCandidates = availableProducts.filter(p => crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw)));
 
-            // Nếu trong kho không có phụ kiện nào, lúc này mới bốc ngẫu nhiên
-            if (fallbackCandidates.length === 0) {
-                fallbackCandidates = availableProducts;
-            }
+            if (fallbackCandidates.length === 0) fallbackCandidates = availableProducts;
 
             const randomFallbackProduct = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
             let aiResultId = randomFallbackProduct.id;
@@ -240,24 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
             ];
             let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
-            // Gọi API Gemini
+            
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
-                
-                // CẬP NHẬT SYSTEM PROMPT "THIẾT QUÂN LUẬT" CHO AI
-                const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
-                Giỏ hàng của khách: [${cartNames}].
-                Danh sách Kho hàng: [${catalogString}].
-                
-                QUY TẮC BẮT BUỘC (NẾU VI PHẠM SẼ BỊ LỖI HỆ THỐNG):
-                1. Khách đang mua Bia/Rượu -> TUYỆT ĐỐI KHÔNG gợi ý thêm Bia/Rượu.
-                2. Ưu tiên tìm các sản phẩm có từ khóa "Thùng", "Thùng đá", "Đá", "Ly", "Mực", "Snack" trong Danh sách Kho hàng để gợi ý.
-                
-                Hãy chọn ra ĐÚNG 1 ID sản phẩm trong Danh sách Kho hàng phù hợp nhất để bán kèm. 
-                Viết 1 lý do (ngắn gọn khoảng 15 chữ) giải thích vì sao nên mua kèm món này.
-                
-                CHỈ ĐƯỢC trả về JSON theo định dạng sau: {"id": "mã_sản_phẩm_được_chọn", "reason": "Lý do mua kèm..."}`;
+                const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh. Giỏ hàng của khách: [${cartNames}]. Danh sách Kho hàng: [${catalogString}]. QUY TẮC BẮT BUỘC: 1. Khách đang mua Bia/Rượu -> TUYỆT ĐỐI KHÔNG gợi ý thêm Bia/Rượu. 2. Ưu tiên tìm các sản phẩm có từ khóa "Thùng", "Thùng đá", "Đá", "Ly", "Mực", "Snack" trong Danh sách Kho hàng để gợi ý. Hãy chọn ra ĐÚNG 1 ID sản phẩm trong Danh sách Kho hàng phù hợp nhất để bán kèm. Viết 1 lý do (ngắn gọn khoảng 15 chữ) giải thích vì sao nên mua kèm món này. CHỈ ĐƯỢC trả về JSON theo định dạng sau: {"id": "mã_sản_phẩm_được_chọn", "reason": "Lý do mua kèm..."}`;
 
                 const response = await fetch(URL, {
                     method: "POST",
@@ -270,25 +236,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.candidates && data.candidates.length > 0) {
                         let aiText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                         const aiResult = JSON.parse(aiText);
-                        
                         if(availableProducts.some(p => p.id === aiResult.id)) {
                             aiResultId = aiResult.id;
                             aiReason = aiResult.reason;
                         }
                     }
-                } else {
-                    console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
                 }
             } catch (err) {
-                console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
+                console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
             }
 
-            // Gắn dữ liệu hiển thị
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
-            
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
-            const discountPrice = basePrice * 0.8; // Giảm mạnh 20% khi mua kèm
+            const discountPrice = basePrice * 0.8; 
             const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
 
             recommendedProductData = {
@@ -307,13 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('upsellPriceOld').innerText = formatPrice(recommendedProductData.basePrice);
 
             upsellBox.style.display = 'block';
-
         } catch (error) {
             console.error("Lỗi hệ thống Suggestion:", error);
             document.getElementById('aiUpsellBox').style.display = 'none';
         }
     };
-    // =========================================================================
 
     checkoutBtn.addEventListener('click', async () => {
         if (!finalAddress) {
@@ -322,11 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
-        
         let finalOrderItems = [...cartData];
         let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
 
-        // NẾU CÓ TICK CHỌN THÌ GỘP VÀO ĐƠN HÀNG LÚC GỬI QUA MO/MO ZALOPAY
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             finalOrderItems.push({
                 id: recommendedProductData.id,
@@ -340,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalAmount += recommendedProductData.discountPrice;
         }
 
-        checkoutBtn.innerText = "Đang xử lý...";
+        checkoutBtn.innerText = "Đang chuyển sang cổng thanh toán...";
         checkoutBtn.disabled = true;
 
         try {
@@ -356,18 +313,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
+            // 1. LƯU ĐƠN HÀNG LÊN FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
+            // 2. LƯU TẠM DỮ LIỆU ĐỂ GỬI EMAIL (CHƯA GỬI NGAY LÚC NÀY)
+            const emailParams = {
+                to_email: userEmail,
+                customer_name: userName,
+                order_id: orderId,
+                total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+                payment_method: selectedPayment.toUpperCase(),
+                delivery_address: finalAddress
+            };
+            // Gói dữ liệu này giấu vào LocalStorage
+            localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
+
+            // 3. GỌI API THANH TOÁN (Trở lại với file Cloudflare Functions của bạn)
             if (selectedPayment === 'momo') {
                 const response = await fetch('/api/pay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: totalAmount, orderId: orderId })
                 });
-
                 const data = await response.json();
-
                 if (data.url) {
                     window.location.href = data.url; 
                 } else {
@@ -387,9 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         orderId: orderId 
                     })
                 });
-
                 const data = await response.json();
-
                 if (data.order_url) {
                     window.location.href = data.order_url; 
                 } else {
