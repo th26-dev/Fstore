@@ -64,7 +64,8 @@ export async function onRequest(context) {
             amount: Number(amount),
             description: safeDescription, 
             bank_code: "", 
-            mac: mac
+            mac: mac,
+            callback_url: `${domain}/api/callback`
         };
 
         const response = await fetch(endpoint, {
