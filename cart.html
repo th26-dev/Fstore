@@ -164,5 +164,31 @@
     <script type="module" src="./controllers/cartController.js"></script>
     <div id="footer-placeholder"></div>
     <script src="./controllers/loadComponents.js"></script>
+    <!-- Các mã HTML modal bản đồ ở trên... -->
+    <div class="input-group">
+                <input type="text" id="detailAddressInput" placeholder="Số nhà, tên đường, phường/xã..." style="width: 100%; padding: 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-family: inherit;">
+            </div>
+            <button id="btnConfirmAddress" class="btn-primary" style="margin-top: 15px; max-width: 100%;">Xác nhận địa chỉ này</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         THƯ VIỆN EMAILJS 
+         ========================================== -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+       (function(){
+          emailjs.init({
+            publicKey: "kezSu7ZgYe7uy12BJ", // <-- Thay mã Public Key của bạn vào
+          });
+       })();
+    </script>
+    
+    <script type="module" src="./controllers/headerController.js"></script>
+    <script type="module" src="./controllers/cartController.js"></script>
+    <div id="footer-placeholder"></div>
+    <script src="./controllers/loadComponents.js"></script>
+</body>
+</html>
 </body>
 </html>

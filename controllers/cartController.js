@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let cartData = [];
     let userId = null;
+    let userEmail = ""; // Lấy email khách hàng để gửi hóa đơn
+    let userName = "";  // Lấy tên khách hàng
     let currentCartSignature = ""; 
 
     // Biến cho phần AI Upsell
@@ -32,6 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapModal = document.getElementById('mapModal');
     
     if (finalAddress) currentAddressText.innerText = finalAddress;
+
+    // =========================================================================
+    // HÀM GỬI EMAIL HÓA ĐƠN QUA EMAILJS
+    // =========================================================================
+    const sendOrderConfirmationEmail = (orderId, customerEmail, customerName, totalAmount, paymentMethod, deliveryAddress) => {
+        const templateParams = {
+            to_email: customerEmail,
+            customer_name: customerName,
+            order_id: orderId,
+            total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+            payment_method: paymentMethod.toUpperCase(),
+            delivery_address: deliveryAddress
+        };
+
+        // ĐIỀN SERVICE_ID CỦA BẠN VÀO ĐÂY (Vd: service_xxxxx)
+        emailjs.send('ĐIỀN_SERVICE_ID_CỦA_BẠN_VÀO_ĐÂY', 'template_ansuc2l', templateParams)
+            .then(function(response) {
+                console.log('✅ ĐÃ GỬI EMAIL THÀNH CÔNG!', response.status, response.text);
+            }, function(error) {
+                console.error('❌ LỖI KHÔNG THỂ GỬI EMAIL:', error);
+            });
+    };
+    // =========================================================================
 
     async function getAddressFromCoords(lat, lng) {
         detailAddressInput.value = "Đang tìm địa chỉ...";
@@ -95,6 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'auth.html';
         } else {
             userId = user.uid;
+            userEmail = user.email; 
+            userName = user.displayName || "Quý khách"; 
+
             const savedCart = localStorage.getItem(`cart_${userId}`);
             
             if (savedCart && JSON.parse(savedCart).length > 0) {
@@ -108,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
         let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
         
@@ -219,15 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
             
-            // KỊCH BẢN BẢO HIỂM THÔNG MINH (SMART FALLBACK):
-            // Ưu tiên tìm các món phụ kiện/đồ nhắm trong kho (Thùng đá, Ly, Khô mực...) thay vì lấy random
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
             
             let fallbackCandidates = availableProducts.filter(p => 
                 crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
             );
 
-            // Nếu trong kho không có phụ kiện nào, lúc này mới bốc ngẫu nhiên
             if (fallbackCandidates.length === 0) {
                 fallbackCandidates = availableProducts;
             }
@@ -240,12 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
             ];
             let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
-            // Gọi API Gemini
+            
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
                 
-                // CẬP NHẬT SYSTEM PROMPT "THIẾT QUÂN LUẬT" CHO AI
                 const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
                 Giỏ hàng của khách: [${cartNames}].
                 Danh sách Kho hàng: [${catalogString}].
@@ -283,12 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
             }
 
-            // Gắn dữ liệu hiển thị
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
             
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
-            const discountPrice = basePrice * 0.8; // Giảm mạnh 20% khi mua kèm
+            const discountPrice = basePrice * 0.8; 
             const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
 
             recommendedProductData = {
@@ -326,7 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalOrderItems = [...cartData];
         let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
 
-        // NẾU CÓ TICK CHỌN THÌ GỘP VÀO ĐƠN HÀNG LÚC GỬI QUA MO/MO ZALOPAY
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             finalOrderItems.push({
                 id: recommendedProductData.id,
@@ -356,9 +377,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
+            // LƯU ĐƠN HÀNG LÊN FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
+            // =========================================================
+            // GỬI EMAIL XÁC NHẬN NGAY SAU KHI LƯU ĐƠN HÀNG THÀNH CÔNG
+            // =========================================================
+            sendOrderConfirmationEmail(orderId, userEmail, userName, totalAmount, selectedPayment, finalAddress);
+
+            // XỬ LÝ CHUYỂN HƯỚNG THANH TOÁN
             if (selectedPayment === 'momo') {
                 const response = await fetch('/api/pay', {
                     method: 'POST',

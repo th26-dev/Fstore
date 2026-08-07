@@ -7,9 +7,16 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'><path fill='%23ffffff' d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/></svg>">
     <link rel="stylesheet" href="./assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+<!-- FStore Custom Dialog (Popup) -->
+<div class="fstore-overlay" id="fstorePopup" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
+    <div class="fstore-popup" style="background: #fff; padding: 25px; border-radius: 12px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        <h3 id="popupTitle" style="margin-top: 0; color: #333; font-size: 20px;">Tiêu đề</h3>
+        <p id="popupMessage" style="color: #666; font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Nội dung</p>
+        <div id="popupActions" style="display: flex; justify-content: center; gap: 10px;"></div>
+    </div>
+</div>
 <body>
     <div class="admin-layout">
         <aside class="sidebar">
@@ -33,7 +40,6 @@
             </header>
 
             <div id="tab-dashboard" class="tab-content active">
-                
                 <div class="filter-section">
                     <label for="timeFilter" style="font-weight: bold; color: #1d1d1f;">
                         <i class="fa-regular fa-calendar-days"></i> Thống kê theo:
@@ -46,13 +52,11 @@
                         <option value="all">Tất cả thời gian</option>
                     </select>
                 </div>
-
                 <div class="stats-grid">
                     <div class="stat-card"><h3>Tổng doanh thu</h3><p id="statRevenue">0 đ</p></div>
                     <div class="stat-card"><h3>Đơn hàng</h3><p id="statOrders">0</p></div>
                     <div class="stat-card"><h3>Sản phẩm</h3><p id="statProducts">0</p></div>
                 </div>
-
                 <div class="charts-grid">
                     <div class="chart-card">
                         <h3>Biểu đồ Doanh thu</h3>
@@ -63,31 +67,53 @@
                         <canvas id="orderPieChart"></canvas>
                     </div>
                 </div>
-
             </div>
 
             <div id="tab-categories" class="tab-content">
-                <div class="flex-between" style="margin-bottom: 20px;">
-                    <h3>Quản lý Danh mục</h3>
-                    <button class="btn-action btn-save" id="btnAddCategory">Thêm danh mục</button>
+                <h2>Quản lý Danh mục Sản phẩm</h2>
+                
+                <!-- Thanh công cụ xử lý hàng loạt -->
+                <div class="category-toolbar" style="margin-bottom: 15px; min-height: 40px;">
+                    <button class="btn-action btn-del" id="btnDeleteMultipleCats" style="display: none; background: #ff3b30;">
+                        Thùng rác: Xóa các mục đã chọn
+                    </button>
                 </div>
-                <table class="data-table">
-                    <thead><tr><th>Mã (ID)</th><th>Tên danh mục</th><th>Danh mục cha</th><th>Thao tác</th></tr></thead>
-                    <tbody id="adminCategoryList"></tbody>
-                </table>
+
+                <div class="category-layout">
+                    <!-- Cột 1: Danh mục Gốc -->
+                    <div class="cat-column">
+                        <div class="cat-col-header">
+                            <h3>Danh mục Gốc</h3>
+                            <button class="btn-action" id="btnAddParentCategory" style="background: #34c759;">+ Thêm Gốc</button>
+                        </div>
+                        <div class="cat-list" id="parentCategoryList">
+                            <!-- Javascript sẽ tự động nhét các thẻ Danh mục gốc vào đây -->
+                        </div>
+                    </div>
+
+                    <!-- Cột 2: Danh mục Con -->
+                    <div class="cat-column">
+                        <div class="cat-col-header">
+                            <h3 id="childColTitle">Danh mục Con</h3>
+                            <button class="btn-action" id="btnAddChildCategory" style="background: #007aff; display: none;">+ Thêm Con</button>
+                        </div>
+                        <div class="cat-list" id="childCategoryList">
+                            <p class="empty-msg">Vui lòng chọn một Danh mục gốc bên trái để xem chi tiết.</p>
+                            <!-- Javascript sẽ tự động nhét các thẻ Danh mục con vào đây -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="tab-products" class="tab-content">
                 <div class="flex-between" style="margin-bottom: 20px;">
                     <h3>Quản lý sản phẩm</h3>
-                    
                     <div style="display: flex; gap: 15px; align-items: center;">
                         <select id="filterProductCategory" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
                             <option value="all">Tất cả danh mục</option>
                         </select>
                         <button class="btn-action btn-save" id="btnAddProduct">Thêm sản phẩm</button>
                     </div>
-
                 </div>
                 <table class="data-table">
                     <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá (Từ)</th><th>Thao tác</th></tr></thead>
@@ -119,7 +145,7 @@
         </main>
     </div>
 
-    <!-- MODAL QUẢN LÝ DANH MỤC (ĐÃ THÊM LOGO) -->
+    <!-- MODAL QUẢN LÝ DANH MỤC -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeCatModal">&times;</span>
@@ -139,10 +165,12 @@
                     <select id="catParentId"><option value="">-- Không có (Danh mục gốc) --</option></select>
                 </div>
                 
-                <!-- BỔ SUNG Ô NHẬP LINK ẢNH LOGO -->
+                <!-- ĐÃ SỬA: Bổ sung input File tải ảnh trực tiếp từ máy -->
                 <div class="form-group">
-                    <label>Link ảnh Logo Thương hiệu (Dùng làm bộ lọc)</label>
-                    <input type="text" id="catImage" placeholder="Dán link ảnh logo (VD: logo Tiger, Heineken...)">
+                    <label>Ảnh Logo Thương hiệu</label>
+                    <input type="file" id="catImageFile" accept="image/png, image/jpeg, image/webp" style="margin-bottom: 10px;">
+                    <input type="text" id="catImage" placeholder="Hoặc dán link ảnh/Mã Base64 vào đây..." title="Đường dẫn ảnh hoặc mã Base64 sẽ tự động hiện ở đây">
+                    <img id="catPreviewImage" style="max-height: 100px; display: none; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd;" />
                 </div>
 
                 <button type="submit" class="btn-action btn-save">Lưu Danh Mục</button>
@@ -157,7 +185,6 @@
             <h2 id="prodModalTitle">Thêm Sản Phẩm</h2>
             <form id="productForm" style="margin-top: 20px;">
                 <input type="hidden" id="prodDocId">
-                
                 <div class="form-group">
                     <label>Tên Sản Phẩm</label>
                     <input type="text" id="prodName" required>
@@ -174,16 +201,13 @@
                 <hr style="margin: 20px 0; border: 0.5px solid #eee;">
                 <h3>Thông số kỹ thuật</h3>
                 <button type="button" class="btn-action btn-add-var" id="btnAddSpec">+ Thêm thông số</button>
-                <div id="specsContainer" class="variant-box">
-                    </div>
+                <div id="specsContainer" class="variant-box"></div>
                 
                 <hr style="margin: 20px 0; border: 0.5px solid #eee;">
                 <h3>Biến thể Sản phẩm (Quy cách, Thể tích, Giá, Ảnh...)</h3>
-                <!-- ĐÃ SỬA THÀNH DẤU CHẤM PHẨY Ở ĐÂY -->
-                <p style="font-size: 13px; color: #ff3b30; margin-bottom: 10px;">* Mẹo: Ở ô Link ảnh, bạn có thể dán nhiều link, cách nhau bởi <strong>dấu CHẤM PHẨY (;)</strong></p>
+                <p style="font-size: 13px; color: #ff3b30; margin-bottom: 10px;">* Mẹo: Bạn có thể chọn nhiều File ảnh cùng lúc. Hệ thống sẽ tự nén và lưu!</p>
                 <button type="button" class="btn-action btn-add-var" id="btnAddVariant">+ Thêm phân loại</button>
-                <div id="variantsContainer" class="variant-box">
-                    </div>
+                <div id="variantsContainer" class="variant-box"></div>
 
                 <button type="submit" class="btn-action btn-save" style="width: 100%; margin-top: 10px;">Lưu Sản Phẩm</button>
             </form>
