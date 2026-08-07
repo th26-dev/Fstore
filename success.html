@@ -3,26 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <title>Thanh toán thành công</title>
-    
     <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .success-box { text-align: center; margin-top: 150px; }
         .success-box i { font-size: 80px; color: #34c759; margin-bottom: 20px; }
-        .btn-home { display: inline-block; margin-top: 30px; padding: 12px 25px; background: #0071e3; color: #fff; border-radius: 20px; text-decoration: none; }
+        .btn-home { display: inline-block; margin-top: 30px; padding: 12px 25px; background: #0071e3; color: #fff; border-radius: 20px; text-decoration: none; cursor: pointer; border: none; font-size: 16px;}
+        .btn-bypass { background: #ea580c; font-weight: bold; }
         #loadingMsg { color: #86868b; margin-top: 15px; }
     </style>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+       (function(){ emailjs.init({ publicKey: "kezSu7ZgYe7uy12BJ" }); })();
+    </script>
 </head>
 <body>
     <div class="success-box">
         <i class="fa-solid fa-circle-check" id="statusIcon"></i>
         <h1 id="statusTitle">Đang xử lý đơn hàng...</h1>
-        <p id="statusDesc">Vui lòng không đóng trình duyệt, hệ thống đang cập nhật giao dịch của bạn.</p>
+        <p id="statusDesc">Vui lòng không đóng trình duyệt, hệ thống đang cập nhật giao dịch.</p>
         <p id="loadingMsg"><i class="fa-solid fa-spinner fa-spin"></i> Đang đồng bộ dữ liệu...</p>
         
         <div style="margin-top: 20px;">
             <a href="index.html" class="btn-home" id="btnHome" style="display: none;">Quay về trang chủ</a>
             <a href="orders.html" class="btn-home" id="btnOrders" style="display: none; background: #f5f5f7; color: #1d1d1f; margin-left: 10px;">Xem đơn hàng</a>
+            <!-- NÚT BÍ MẬT DÀNH CHO DEMO ĐỒ ÁN -->
+            <button class="btn-home btn-bypass" id="btnBypass" style="display: none; margin-left: 10px;">Bỏ qua lỗi & Gửi Mail (Bản Demo)</button>
         </div>
     </div>
 
@@ -34,9 +41,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const resultCode = urlParams.get('resultCode'); 
-            
-            // LẤY ĐÚNG MÃ TỪ TRÊN THANH URL CỦA MOMO TRẢ VỀ
-            const orderId = urlParams.get('orderId');
+            const zaloStatus = urlParams.get('status'); 
+            const orderId = urlParams.get('orderId') || localStorage.getItem('pending_zalopay_order_id');
 
             const statusTitle = document.getElementById('statusTitle');
             const statusDesc = document.getElementById('statusDesc');
@@ -44,51 +50,61 @@
             const loadingMsg = document.getElementById('loadingMsg');
             const btnHome = document.getElementById('btnHome');
             const btnOrders = document.getElementById('btnOrders');
+            const btnBypass = document.getElementById('btnBypass');
 
             if (!orderId) {
-                statusIcon.className = "fa-solid fa-circle-question";
-                statusIcon.style.color = "#86868b";
                 statusTitle.innerText = "Không tìm thấy mã đơn hàng!";
-                statusDesc.innerText = "Giao dịch không hợp lệ hoặc không có mã trả về từ MoMo.";
                 loadingMsg.style.display = "none";
                 btnHome.style.display = "inline-block";
                 return;
             }
 
-            // Đợi xác thực Firebase xong mới cập nhật
+            // Hàm xử lý gửi Email
+            const processSuccessAndEmail = async (orderRef) => {
+                await updateDoc(orderRef, { status: "Đã thanh toán" });
+                statusIcon.className = "fa-solid fa-circle-check";
+                statusIcon.style.color = "#34c759";
+                statusTitle.innerText = "Cảm ơn bạn đã đặt hàng!";
+                statusDesc.innerText = `Đang gửi hóa đơn về Email của bạn...`;
+
+                const pendingEmailData = localStorage.getItem('fstore_pending_email');
+                if (pendingEmailData) {
+                    const templateParams = JSON.parse(pendingEmailData);
+                    // NHỚ THAY SERVICE_ID VÀO DÒNG DƯỚI NÀY:
+                    emailjs.send('ĐIỀN_SERVICE_ID_CỦA_BẠN_VÀO_ĐÂY', 'template_ansuc2l', templateParams)
+                        .then(() => {
+                            statusDesc.innerText = `Giao dịch thành công. Hóa đơn xác nhận đã được gửi về Email của bạn.`;
+                            localStorage.removeItem('fstore_pending_email'); 
+                        })
+                        .catch((error) => {
+                            statusDesc.innerText = `Giao dịch thành công, nhưng có lỗi khi gửi Email.`;
+                        });
+                }
+            };
+
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     const orderRef = doc(db, "orders", orderId);
                     try {
-                        if (resultCode === "0") {
-                            await updateDoc(orderRef, { status: "Đã thanh toán" });
-                            
-                            statusIcon.className = "fa-solid fa-circle-check";
-                            statusIcon.style.color = "#34c759";
-                            statusTitle.innerText = "Cảm ơn bạn đã đặt hàng!";
-                            statusDesc.innerText = `Giao dịch đơn hàng của bạn đã được xử lý thành công.`;
+                        if (resultCode === "0" || zaloStatus === "1") {
+                            await processSuccessAndEmail(orderRef);
                         } else {
-                            await updateDoc(orderRef, { status: "Đã hủy" });
-                            
+                            // NẾU ZALOPAY BÁO LỖI -> HIỆN NÚT BYPASS LÊN CHỮA CHÁY
                             statusIcon.className = "fa-solid fa-circle-xmark";
                             statusIcon.style.color = "#ff3b30";
-                            statusTitle.innerText = "Thanh toán thất bại hoặc đã bị hủy!";
-                            statusDesc.innerText = "Giao dịch không thành công, đơn hàng của bạn đã bị hủy.";
+                            statusTitle.innerText = "ZaloPay Sandbox báo lỗi!";
+                            statusDesc.innerText = "Giao dịch bị Sandbox ZaloPay từ chối. Bạn có thể bấm nút bên dưới để bỏ qua và xem luồng gửi Email.";
+                            btnBypass.style.display = "inline-block"; // Hiện nút bí mật
+
+                            btnBypass.addEventListener('click', async () => {
+                                btnBypass.style.display = "none";
+                                await processSuccessAndEmail(orderRef); // Ép chạy hàm gửi mail
+                            });
                         }
                     } catch (error) {
-                        console.error("LỖI CẬP NHẬT FIREBASE:", error);
-                        statusIcon.className = "fa-solid fa-triangle-exclamation";
-                        statusIcon.style.color = "#f59e0b";
                         statusTitle.innerText = "Đã nhận tiền nhưng lỗi đồng bộ!";
-                        statusDesc.innerText = "Nhấn F12 mở tab Console để xem lỗi. Thường do Rules của Firebase hoặc Adblock chặn update.";
                     }
-                } else {
-                    statusIcon.className = "fa-solid fa-circle-xmark";
-                    statusIcon.style.color = "#ff3b30";
-                    statusTitle.innerText = "Phiên đăng nhập hết hạn!";
-                    statusDesc.innerText = "Hệ thống không nhận diện được tài khoản của bạn để lưu đơn hàng.";
-                }
-
+                } 
                 loadingMsg.style.display = "none";
                 btnHome.style.display = "inline-block";
                 btnOrders.style.display = "inline-block";

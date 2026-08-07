@@ -322,11 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
-        
         let finalOrderItems = [...cartData];
         let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
 
-        // NẾU CÓ TICK CHỌN THÌ GỘP VÀO ĐƠN HÀNG LÚC GỬI QUA MO/MO ZALOPAY
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             finalOrderItems.push({
                 id: recommendedProductData.id,
@@ -340,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalAmount += recommendedProductData.discountPrice;
         }
 
-        checkoutBtn.innerText = "Đang xử lý...";
+        checkoutBtn.innerText = "Đang kết nối cổng thanh toán...";
         checkoutBtn.disabled = true;
 
         try {
@@ -356,23 +354,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: new Date()
             };
             
+            // LƯU ĐƠN HÀNG LÊN FIREBASE
             await setDoc(doc(db, "orders", orderId), newOrder);
             localStorage.removeItem(`cart_${userId}`);
 
+            // BẮT BUỘC PHẢI CÓ ĐOẠN NÀY ĐỂ GỬI ĐƯỢC EMAIL
+            const emailParams = {
+                to_email: userEmail,
+                customer_name: userName,
+                order_id: orderId,
+                total_amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount),
+                payment_method: selectedPayment.toUpperCase(),
+                delivery_address: finalAddress
+            };
+            localStorage.setItem('fstore_pending_email', JSON.stringify(emailParams));
+
+            // GỌI API THANH TOÁN
             if (selectedPayment === 'momo') {
                 const response = await fetch('/api/pay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: totalAmount, orderId: orderId })
                 });
-
                 const data = await response.json();
-
-                if (data.url) {
-                    window.location.href = data.url; 
-                } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
-                }
+                if (data.url) window.location.href = data.url; 
+                else throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
 
             } else if (selectedPayment === 'zalopay') {
                 localStorage.setItem('pending_zalopay_order_id', orderId);
@@ -381,23 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/zalopay', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        amount: totalAmount, 
-                        orderInfo: orderInfo, 
-                        orderId: orderId 
-                    })
+                    body: JSON.stringify({ amount: totalAmount, orderInfo: orderInfo, orderId: orderId })
                 });
-
                 const data = await response.json();
-
-                if (data.order_url) {
-                    window.location.href = data.order_url; 
-                } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
-                }
+                if (data.order_url) window.location.href = data.order_url; 
+                else throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
                 
             } else {
-                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
+                alert(`Phương thức thanh toán đang được bảo trì.`);
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerText = "Thanh Toán";
             }

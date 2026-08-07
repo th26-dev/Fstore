@@ -1,5 +1,3 @@
-// File: functions/api/zalopay.js
-
 export async function onRequest(context) {
     if (context.request.method !== "POST") {
         return new Response(JSON.stringify({ error: "Chỉ chấp nhận phương thức POST" }), {
@@ -35,7 +33,6 @@ export async function onRequest(context) {
         
         const item = JSON.stringify([{ itemname: safeOrderInfo, itemprice: amount, itemquantity: 1 }]);
         
-        // CHỈ ĐỔI DUY NHẤT CHỖ NÀY THÀNH success.html
         const embed_data = JSON.stringify({ 
             redirecturl: `${domain}/success.html` 
         });
@@ -64,8 +61,8 @@ export async function onRequest(context) {
             amount: Number(amount),
             description: safeDescription, 
             bank_code: "", 
-            mac: mac
-            // ĐÃ XÓA CALLBACK_URL
+            mac: mac,
+            callback_url: `${domain}/` // Mẹo: Trỏ về trang chủ để ZaloPay luôn nhận được mã 200 OK
         };
 
         const response = await fetch(endpoint, {
