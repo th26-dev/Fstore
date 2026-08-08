@@ -984,6 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('closePromoModal').onclick = () => promoPriceModal.style.display = 'none';
     }
 
+
+
+    
     window.openPromoModal = (productId) => {
         const p = productsList.find(x => x.id === productId);
         if (!p) return;
