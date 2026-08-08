@@ -1,9 +1,9 @@
 import { auth, db } from '../models/firebaseConfig.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
+// THÊM getDoc ĐỂ ĐỌC VOUCHER TỪ FIREBASE
+import { collection, doc, setDoc, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"; 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // === CẤU HÌNH API KEY GEMINI ===
     const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
 
     const cartItemsContainer = document.getElementById('cartItems');
@@ -17,12 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let cartData = [];
     let userId = null;
     let currentCartSignature = ""; 
-
-    // Biến cho phần AI Upsell
+    let appliedVouchers = {}; 
     let recommendedProductData = null; 
+    
     const chkBuyUpsell = document.getElementById('chkBuyUpsell');
 
-    // Biến cho Bản đồ
     let map = null;
     let marker = null;
     let finalAddress = localStorage.getItem('fstore_delivery_address') || null;
@@ -31,62 +30,70 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailAddressInput = document.getElementById('detailAddressInput');
     const mapModal = document.getElementById('mapModal');
     
-    if (finalAddress) currentAddressText.innerText = finalAddress;
+    if (finalAddress && currentAddressText) {
+        currentAddressText.innerText = finalAddress;
+    }
 
     async function getAddressFromCoords(lat, lng) {
-        detailAddressInput.value = "Đang tìm địa chỉ...";
+        if (detailAddressInput) detailAddressInput.value = "Đang tìm địa chỉ...";
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
             const data = await response.json();
-            if (data && data.display_name) {
+            if (data && data.display_name && detailAddressInput) {
                 detailAddressInput.value = data.display_name;
             }
         } catch (error) {
-            detailAddressInput.value = "Không thể định vị, vui lòng nhập tay.";
+            if (detailAddressInput) detailAddressInput.value = "Không thể định vị, vui lòng nhập tay.";
         }
     }
 
-    document.getElementById('btnOpenMap').addEventListener('click', () => {
-        mapModal.classList.add('active');
-        setTimeout(() => {
-            if (!map) {
-                map = L.map('deliveryMap').setView([10.7769, 106.6951], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
+    if (document.getElementById('btnOpenMap')) {
+        document.getElementById('btnOpenMap').addEventListener('click', () => {
+            mapModal.classList.add('active');
+            setTimeout(() => {
+                if (!map) {
+                    map = L.map('deliveryMap').setView([10.7769, 106.6951], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
 
-                marker = L.marker([10.7769, 106.6951], {draggable: true}).addTo(map);
+                    marker = L.marker([10.7769, 106.6951], {draggable: true}).addTo(map);
 
-                marker.on('dragend', function () {
-                    const coords = marker.getLatLng();
-                    getAddressFromCoords(coords.lat, coords.lng);
-                });
+                    marker.on('dragend', function () {
+                        const coords = marker.getLatLng();
+                        getAddressFromCoords(coords.lat, coords.lng);
+                    });
 
-                map.on('click', function(e) {
-                    marker.setLatLng(e.latlng);
-                    getAddressFromCoords(e.latlng.lat, e.latlng.lng);
-                });
-            } else {
-                map.invalidateSize(); 
-            }
-        }, 300);
-    });
+                    map.on('click', function(e) {
+                        marker.setLatLng(e.latlng);
+                        getAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                    });
+                } else {
+                    map.invalidateSize(); 
+                }
+            }, 300);
+        });
+    }
 
-    document.getElementById('closeMapModal').addEventListener('click', () => {
-        mapModal.classList.remove('active');
-    });
-
-    document.getElementById('btnConfirmAddress').addEventListener('click', () => {
-        const addr = detailAddressInput.value.trim();
-        if (addr && addr !== "Đang tìm địa chỉ...") {
-            finalAddress = addr;
-            currentAddressText.innerText = finalAddress;
-            localStorage.setItem('fstore_delivery_address', finalAddress);
+    if (document.getElementById('closeMapModal')) {
+        document.getElementById('closeMapModal').addEventListener('click', () => {
             mapModal.classList.remove('active');
-        } else {
-            alert("Vui lòng nhập hoặc chọn một địa chỉ hợp lệ!");
-        }
-    });
+        });
+    }
+
+    if (document.getElementById('btnConfirmAddress')) {
+        document.getElementById('btnConfirmAddress').addEventListener('click', () => {
+            const addr = detailAddressInput.value.trim();
+            if (addr && addr !== "Đang tìm địa chỉ...") {
+                finalAddress = addr;
+                currentAddressText.innerText = finalAddress;
+                localStorage.setItem('fstore_delivery_address', finalAddress);
+                mapModal.classList.remove('active');
+            } else {
+                alert("Vui lòng nhập hoặc chọn một địa chỉ hợp lệ!");
+            }
+        });
+    }
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
@@ -103,20 +110,54 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 emptyCartView.style.display = 'block';
                 filledCartView.style.display = 'none';
-                document.getElementById('aiUpsellBox').style.display = 'none';
+                if (document.getElementById('aiUpsellBox')) document.getElementById('aiUpsellBox').style.display = 'none';
             }
         }
     });
 
-    // Cập nhật lại giá tiền tổng khi Tick chọn ô mua kèm
     const updateTotalPriceDisplay = () => {
-        let total = cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        let total = 0;
+        let discountAmount = 0;
+
+        cartData.forEach((item, index) => {
+            let itemTotal = item.price * (item.quantity || 1);
+            let itemFinalTotal = itemTotal;
+            
+            if (appliedVouchers[item.id]) {
+                let discount = itemTotal * (appliedVouchers[item.id].discount_percent / 100);
+                discountAmount += discount;
+                itemFinalTotal -= discount;
+            }
+            
+            const itemPriceEl = document.getElementById(`item-price-${index}`);
+            if (itemPriceEl) {
+                if (appliedVouchers[item.id]) {
+                    itemPriceEl.innerHTML = `
+                        <div style="text-decoration: line-through; color: #86868b; font-size: 14px;">${formatPrice(itemTotal)}</div>
+                        <div style="color: #ff3b30; font-size: 22px;">${formatPrice(itemFinalTotal)}</div>
+                    `;
+                } else {
+                    itemPriceEl.innerHTML = `<div style="color: #1d1d1f; font-size: 22px;">${formatPrice(itemTotal)}</div>`;
+                }
+            }
+
+            total += itemTotal;
+        });
         
         if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
             total += recommendedProductData.discountPrice;
         }
-        
-        totalPriceEl.innerText = formatPrice(total);
+
+        let finalTotal = total - discountAmount;
+
+        if (discountAmount > 0) {
+            totalPriceEl.innerHTML = `
+                <span style="text-decoration: line-through; color: #86868b; font-size: 16px;">${formatPrice(total)}</span> <br/> 
+                <span style="color: #ff3b30;">${formatPrice(finalTotal)}</span>
+            `;
+        } else {
+            totalPriceEl.innerText = formatPrice(finalTotal);
+        }
     };
 
     if (chkBuyUpsell) {
@@ -131,6 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         cartData.forEach((item, index) => {
             if (!item.quantity) item.quantity = 1;
+            
+            const existingCode = appliedVouchers[item.id] ? appliedVouchers[item.id].voucher_code : '';
+            const existingMsg = appliedVouchers[item.id] ? `Giảm ${appliedVouchers[item.id].discount_percent}%` : '';
+            const msgDisplay = appliedVouchers[item.id] ? 'block' : 'none';
 
             html += `
                 <div class="cart-item">
@@ -139,9 +184,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="cart-item-info">
                             <h3>${item.name}</h3>
                             <p>${item.color || ''} ${item.storage ? '| ' + item.storage : ''}</p>
+                            
+                            <!-- KHU VỰC NHẬP VOUCHER CHO TỪNG SẢN PHẨM -->
+                            <div style="margin-top: 15px;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <i class="fa-solid fa-ticket" style="color: #0071e3; font-size: 14px;"></i>
+                                    <input type="text" class="item-voucher-input" data-id="${item.id}" placeholder="Mã giảm giá..." value="${existingCode}">
+                                    <button class="btn-apply-item-voucher" data-id="${item.id}">Áp dụng</button>
+                                </div>
+                                <p class="item-voucher-msg" id="msg-${item.id}" style="font-size: 12px; margin-top: 6px; font-weight: 500; display: ${msgDisplay}; color: #34c759;">${existingMsg}</p>
+                            </div>
                         </div>
                         <div class="cart-item-actions" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
-                            <div style="font-size: 22px; font-weight: 600; color: #1d1d1f; margin-bottom: 15px;">${formatPrice(item.price)}</div>
+                            <div style="font-weight: 600; margin-bottom: 15px;" id="item-price-${index}">
+                                <!-- Giá sẽ được render động ở đây -->
+                            </div>
                             <div class="qty-select-wrapper">
                                 <select class="qty-select" data-index="${index}">
                                     ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option value="${n}" ${item.quantity === n ? 'selected' : ''}>${n}</option>`).join('')}
@@ -160,6 +217,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
         triggerAIRecommendations();
 
+        // LOGIC KIỂM TRA MÃ GIẢM GIÁ TỪ FIREBASE
+        document.querySelectorAll('.btn-apply-item-voucher').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const productId = e.target.dataset.id;
+                const inputEl = document.querySelector(`.item-voucher-input[data-id="${productId}"]`);
+                const msgEl = document.getElementById(`msg-${productId}`);
+                const code = inputEl.value.trim().toUpperCase();
+
+                if (!code) {
+                    if (appliedVouchers[productId]) {
+                        delete appliedVouchers[productId];
+                        msgEl.style.display = 'none';
+                        updateTotalPriceDisplay();
+                    }
+                    return;
+                }
+
+                e.target.innerText = '...';
+                
+                try {
+                    // Truy vấn Firebase để kiểm tra voucher
+                    const voucherRef = doc(db, "vouchers", code);
+                    const voucherSnap = await getDoc(voucherRef);
+
+                    if (!voucherSnap.exists()) {
+                        throw new Error('Mã giảm giá không tồn tại!');
+                    }
+
+                    const data = voucherSnap.data();
+
+                    // Kiểm tra xem voucher có khớp với sản phẩm đang nhập hay không
+                    if (data.productId !== productId) {
+                        throw new Error('Mã này không dành cho sản phẩm này.');
+                    }
+
+                    // Kiểm tra thời hạn
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const startDate = new Date(data.startDate);
+                    startDate.setHours(0,0,0,0);
+                    const endDate = new Date(data.endDate);
+                    endDate.setHours(23,59,59,999);
+
+                    if (today < startDate || today > endDate) {
+                        throw new Error('Mã giảm giá đã hết hạn hoặc chưa áp dụng!');
+                    }
+
+                    // Lưu voucher vào bộ nhớ
+                    appliedVouchers[productId] = {
+                        voucher_code: code,
+                        discount_percent: data.discountPercent, // Sử dụng tên trường Firebase
+                        product_id: data.productId
+                    };
+                    
+                    msgEl.style.color = '#34c759';
+                    msgEl.innerText = `Áp dụng thành công! Giảm ${data.discountPercent}%`;
+                    msgEl.style.display = 'block';
+
+                    updateTotalPriceDisplay();
+
+                } catch (error) {
+                    delete appliedVouchers[productId];
+                    msgEl.style.color = '#ff3b30';
+                    msgEl.innerText = error.message;
+                    msgEl.style.display = 'block';
+                    updateTotalPriceDisplay();
+                } finally {
+                    e.target.innerText = 'Áp dụng';
+                }
+            });
+        });
+
         document.querySelectorAll('.qty-select').forEach(select => {
             select.addEventListener('change', (e) => {
                 const idx = e.target.dataset.index;
@@ -172,13 +301,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.remove-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = e.target.dataset.index;
+                const removedItemId = cartData[idx].id;
+                
+                if (appliedVouchers[removedItemId]) {
+                    delete appliedVouchers[removedItemId];
+                }
+
                 cartData.splice(idx, 1);
                 localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
                 window.dispatchEvent(new Event('cartUpdated')); 
+
                 if (cartData.length === 0) {
                     emptyCartView.style.display = 'block';
                     filledCartView.style.display = 'none';
-                    document.getElementById('aiUpsellBox').style.display = 'none';
+                    if (document.getElementById('aiUpsellBox')) document.getElementById('aiUpsellBox').style.display = 'none';
                     currentCartSignature = ""; 
                 } else {
                     renderCart();
@@ -187,9 +323,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // =========================================================================
-    // HỆ THỐNG GỢI Ý MUA KÈM DẠNG CHECKBOX (CÓ BẢO HIỂM LỖI API)
-    // =========================================================================
     const triggerAIRecommendations = () => {
         const newSignature = cartData.map(item => item.id).sort().join(',');
         if (newSignature !== currentCartSignature && newSignature !== "") {
@@ -219,15 +352,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const catalogString = availableProducts.map(p => `{"id": "${p.id}", "name": "${p.name}"}`).join(", ");
             
-            // KỊCH BẢN BẢO HIỂM THÔNG MINH (SMART FALLBACK):
-            // Ưu tiên tìm các món phụ kiện/đồ nhắm trong kho (Thùng đá, Ly, Khô mực...) thay vì lấy random
             const crossSellKeywords = ['thùng đá', 'thùng', 'ly', 'khô mực', 'snack', 'đá'];
             
             let fallbackCandidates = availableProducts.filter(p => 
                 crossSellKeywords.some(kw => p.name.toLowerCase().includes(kw))
             );
 
-            // Nếu trong kho không có phụ kiện nào, lúc này mới bốc ngẫu nhiên
             if (fallbackCandidates.length === 0) {
                 fallbackCandidates = availableProducts;
             }
@@ -240,12 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Gợi ý thông minh: Hầu hết khách hàng mua đồ uống đều mua kèm sản phẩm này để cuộc vui trọn vẹn."
             ];
             let aiReason = fakeAiReasons[Math.floor(Math.random() * fakeAiReasons.length)];
-            // Gọi API Gemini
+            
             try {
                 const targetModel = "gemini-1.5-flash";
                 const URL = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY.trim()}`;
                 
-                // CẬP NHẬT SYSTEM PROMPT "THIẾT QUÂN LUẬT" CHO AI
                 const prompt = `Bạn là hệ thống tư vấn bán chéo (Cross-sell) thông minh.
                 Giỏ hàng của khách: [${cartNames}].
                 Danh sách Kho hàng: [${catalogString}].
@@ -276,19 +405,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             aiReason = aiResult.reason;
                         }
                     }
-                } else {
-                    console.warn("API Gemini lỗi, tự động dùng sản phẩm Smart Fallback.");
                 }
             } catch (err) {
                 console.warn("Mất mạng hoặc lỗi Fetch, tự động dùng sản phẩm Smart Fallback.");
             }
 
-            // Gắn dữ liệu hiển thị
             const recommendedProd = availableProducts.find(p => p.id === aiResultId) || randomFallbackProduct;
-            
             const defaultVariant = (recommendedProd.variants && recommendedProd.variants.length > 0) ? recommendedProd.variants[0] : {};
             const basePrice = defaultVariant.price || recommendedProd.price || recommendedProd.basePrice || 0;
-            const discountPrice = basePrice * 0.8; // Giảm mạnh 20% khi mua kèm
+            const discountPrice = basePrice * 0.8; 
             const imgUrl = defaultVariant.images ? defaultVariant.images[0] : (recommendedProd.image || "https://via.placeholder.com/150");
 
             recommendedProductData = {
@@ -310,103 +435,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Lỗi hệ thống Suggestion:", error);
-            document.getElementById('aiUpsellBox').style.display = 'none';
+            if (upsellBox) upsellBox.style.display = 'none';
         }
     };
-    // =========================================================================
 
-    checkoutBtn.addEventListener('click', async () => {
-        if (!finalAddress) {
-            alert("Bạn chưa chọn địa chỉ giao hàng! Vui lòng chọn trên bản đồ.");
-            return;
-        }
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', async () => {
+            if (!finalAddress) {
+                alert("Bạn chưa chọn địa chỉ giao hàng! Vui lòng chọn trên bản đồ.");
+                return;
+            }
 
-        const selectedPayment = document.querySelector('input[name="payment"]:checked').value;
-        
-        let finalOrderItems = [...cartData];
-        let totalAmount = Math.round(cartData.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0));
-
-        // NẾU CÓ TICK CHỌN THÌ GỘP VÀO ĐƠN HÀNG LÚC GỬI QUA MO/MO ZALOPAY
-        if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
-            finalOrderItems.push({
-                id: recommendedProductData.id,
-                name: recommendedProductData.name,
-                price: recommendedProductData.discountPrice,
-                image: recommendedProductData.image,
-                quantity: 1,
-                color: "Mua kèm",
-                storage: "Ưu đãi AI (-20%)"
-            });
-            totalAmount += recommendedProductData.discountPrice;
-        }
-
-        checkoutBtn.innerText = "Đang xử lý...";
-        checkoutBtn.disabled = true;
-
-        try {
-            const orderId = "FSTORE_" + Date.now();
-
-            const newOrder = {
-                userId: userId,
-                items: finalOrderItems, 
-                totalAmount: totalAmount, 
-                deliveryAddress: finalAddress, 
-                status: "Chờ thanh toán",
-                paymentMethod: selectedPayment, 
-                createdAt: new Date()
-            };
+            const selectedPaymentEl = document.querySelector('input[name="payment"]:checked');
+            const selectedPayment = selectedPaymentEl ? selectedPaymentEl.value : 'momo';
             
-            await setDoc(doc(db, "orders", orderId), newOrder);
-            localStorage.removeItem(`cart_${userId}`);
+            let finalOrderItems = [...cartData];
+            let totalAmount = 0;
+            let discountAmount = 0;
+            
+            cartData.forEach(item => {
+                let itemTotal = item.price * (item.quantity || 1);
+                if (appliedVouchers[item.id]) {
+                    let discount = itemTotal * (appliedVouchers[item.id].discount_percent / 100);
+                    discountAmount += discount;
+                }
+                totalAmount += itemTotal;
+            });
+            
+            totalAmount -= discountAmount;
 
-            if (selectedPayment === 'momo') {
-                const response = await fetch('/api/pay', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+            if (chkBuyUpsell && chkBuyUpsell.checked && recommendedProductData) {
+                finalOrderItems.push({
+                    id: recommendedProductData.id,
+                    name: recommendedProductData.name,
+                    price: recommendedProductData.discountPrice,
+                    image: recommendedProductData.image,
+                    quantity: 1,
+                    color: "Mua kèm",
+                    storage: "Ưu đãi AI (-20%)"
                 });
+                totalAmount += recommendedProductData.discountPrice;
+            }
+            
+            totalAmount = Math.round(totalAmount);
 
-                const data = await response.json();
+            checkoutBtn.innerText = "Đang xử lý...";
+            checkoutBtn.disabled = true;
 
-                if (data.url) {
-                    window.location.href = data.url; 
+            try {
+                const orderId = "FSTORE_" + Date.now();
+                const appliedVoucherCodes = Object.values(appliedVouchers).map(v => v.voucher_code).join(', ');
+
+                const newOrder = {
+                    userId: userId,
+                    items: finalOrderItems, 
+                    totalAmount: totalAmount, 
+                    deliveryAddress: finalAddress, 
+                    status: "Chờ thanh toán",
+                    paymentMethod: selectedPayment, 
+                    createdAt: new Date(),
+                    vouchersApplied: appliedVoucherCodes || null
+                };
+                
+                await setDoc(doc(db, "orders", orderId), newOrder);
+                localStorage.removeItem(`cart_${userId}`);
+
+                if (selectedPayment === 'momo') {
+                    const response = await fetch('/api/pay', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: totalAmount, orderId: orderId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.url) {
+                        window.location.href = data.url; 
+                    } else {
+                        throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+                    }
+
+                } else if (selectedPayment === 'zalopay') {
+                    localStorage.setItem('pending_zalopay_order_id', orderId);
+                    const orderInfo = finalOrderItems.map(item => item.name).join(', ');
+                    
+                    const response = await fetch('/api/zalopay', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            amount: totalAmount, 
+                            orderInfo: orderInfo, 
+                            orderId: orderId 
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.order_url) {
+                        window.location.href = data.order_url; 
+                    } else {
+                        throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                    }
+                    
                 } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch MoMo");
+                    alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.innerText = "Thanh Toán";
                 }
 
-            } else if (selectedPayment === 'zalopay') {
-                localStorage.setItem('pending_zalopay_order_id', orderId);
-                const orderInfo = finalOrderItems.map(item => item.name).join(', ');
-                
-                const response = await fetch('/api/zalopay', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        amount: totalAmount, 
-                        orderInfo: orderInfo, 
-                        orderId: orderId 
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.order_url) {
-                    window.location.href = data.order_url; 
+            } catch (error) {
+                if(checkoutMsg) {
+                    checkoutMsg.style.display = "block";
+                    checkoutMsg.innerText = error.message;
                 } else {
-                    throw new Error(data.error || "Lỗi tạo giao dịch ZaloPay");
+                    alert(error.message);
                 }
-                
-            } else {
-                alert(`Phương thức thanh toán ${selectedPayment.toUpperCase()} đang được bảo trì.`);
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerText = "Thanh Toán";
             }
-
-        } catch (error) {
-            checkoutMsg.style.display = "block";
-            checkoutMsg.innerText = error.message;
-            checkoutBtn.disabled = false;
-            checkoutBtn.innerText = "Thanh Toán";
-        }
-    });
+        });
+    }
 });

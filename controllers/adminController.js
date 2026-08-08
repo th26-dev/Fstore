@@ -3,12 +3,22 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { doc, getDoc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
+    // === CẤU HÌNH API KEY GEMINI ===
+    const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
+
     const adminEmail = document.getElementById('adminEmail');
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
     const tabContents = document.querySelectorAll('.tab-content');
 
+    let currentUserEmail = ""; 
+    let currentEditingProduct = null; 
+
+    // Biến cho Chart.js
+    let revenueChartInstance = null;
+    let pieChartInstance = null;
+
     // ==========================================
-    // ĐỘNG CƠ CUSTOM POPUP (Thay thế alert, confirm, prompt)
+    // CUSTOM POPUP (FSTORE DIALOG)
     // ==========================================
     const FStoreDialog = {
         show: function(title, message, type = 'info', callback = null) {
@@ -52,9 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ==========================================
-    // THUẬT TOÁN NÉN ẢNH (CANVAS HTML5) 
-    // ==========================================
     const compressImage = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -97,20 +104,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
-    const formatDate = (timestamp) => {
+    
+    const formatDateTime = (timestamp) => {
         if (!timestamp) return "Không rõ thời gian";
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+        return date.toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "Không rõ";
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     let categoriesList = [];
     let productsList = [];
     let ordersList = [];
+    let vouchersList = [];
     let isEditCategory = false;
     
-    // BIẾN TRẠNG THÁI CHO GIAO DIỆN 2 CỘT
     let activeParentCatId = null; 
-    let selectedCatIds = new Set(); // Chứa ID các danh mục được tick Checkbox
+    let selectedCatIds = new Set(); 
 
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -119,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists() && userDoc.data().role === "admin") {
+            currentUserEmail = user.email; 
             adminEmail.innerText = `Xin chào, ${user.email}`;
             loadAdminData();
         } else {
@@ -129,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const loadAdminData = async () => {
-        // TẢI DANH MỤC
+        // 1. TẢI DANH MỤC
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
         categoriesList = [];
         let parentOptionsHtml = '<option value="">-- Không có (Danh mục gốc) --</option>';
@@ -154,34 +169,46 @@ document.addEventListener('DOMContentLoaded', () => {
             filterSelect.value = currentFilter || "all";
             filterSelect.onchange = (e) => renderProductsTable(e.target.value);
         }
-
-        // GỌI HÀM RENDER 2 CỘT MỚI
         renderParentCategories();
 
-        // TẢI SẢN PHẨM
+        // 2. TẢI SẢN PHẨM
         const prodSnap = await getDocs(collection(db, "products"));
         productsList = [];
-        prodSnap.forEach(doc => productsList.push(doc.data()));
+        let vProdHtml = '<option value="">-- Lựa chọn sản phẩm --</option>';
+        prodSnap.forEach(doc => {
+            const p = doc.data();
+            productsList.push(p);
+            vProdHtml += `<option value="${p.id}">${p.name}</option>`;
+        });
+        
+        const vProductSelect = document.getElementById('vProduct');
+        if (vProductSelect) vProductSelect.innerHTML = vProdHtml;
+
         renderProductsTable(filterSelect ? filterSelect.value : "all");
 
-        // TẢI ĐƠN HÀNG
+        // 3. TẢI ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
         ordersList = [];
-        let totalRev = 0;
         orderSnap.forEach(doc => {
             const o = doc.data();
             o.id = doc.id; 
             ordersList.push(o);
-            totalRev += (o.totalAmount || o.totalPrice || 0);
         });
-        document.getElementById('statOrders').innerText = ordersList.length;
-        document.getElementById('statRevenue').innerText = formatPrice(totalRev);
+        
         renderOrdersTable();
-
         const sortOrderSelect = document.getElementById('sortOrderSelect');
         if (sortOrderSelect) sortOrderSelect.addEventListener('change', renderOrdersTable);
 
-        // TẢI DIỄN ĐÀN
+        // 4. GỌI DASHBOARD (BIỂU ĐỒ & AI)
+        updateDashboardStatsAndCharts();
+
+        // 5. TẢI VOUCHER
+        const voucherSnap = await getDocs(collection(db, "vouchers"));
+        vouchersList = [];
+        voucherSnap.forEach(doc => vouchersList.push({ id: doc.id, ...doc.data() }));
+        renderVouchersTable();
+
+        // 6. TẢI DIỄN ĐÀN
         const forumSnap = await getDocs(query(collection(db, "forum_posts"), orderBy("createdAt", "desc")));
         let forumHtml = '';
         forumSnap.forEach(snap => {
@@ -194,11 +221,237 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             </tr>`;
         });
-        document.getElementById('adminForumList').innerHTML = forumHtml || '<tr><td colspan="3">Không có câu hỏi mới</td></tr>';
+        document.getElementById('adminForumList').innerHTML = forumHtml || '<tr><td colspan="3" class="text-center">Không có câu hỏi mới</td></tr>';
     };
 
+
+    // ============================================================================
+    // VẼ BIỂU ĐỒ & AI PHÂN TÍCH (GEMINI) DỰA TRÊN DỮ LIỆU ĐƠN HÀNG
+    // ============================================================================
+    const updateDashboardStatsAndCharts = async () => {
+        let totalRev = 0;
+        let validOrders = ordersList.filter(o => o.status !== "Đã hủy" && o.status !== "Cancelled");
+        
+        validOrders.forEach(o => totalRev += (o.totalAmount || o.totalPrice || 0));
+
+        document.getElementById('statOrders').innerText = validOrders.length;
+        document.getElementById('statRevenue').innerText = formatPrice(totalRev);
+        document.getElementById('statProducts').innerText = productsList.length;
+
+        if(validOrders.length === 0) {
+            document.getElementById('aiAdviceContent').innerText = "Chưa có đủ dữ liệu bán hàng để AI phân tích.";
+            return;
+        }
+
+        const revByDate = {};
+        validOrders.forEach(o => {
+            const dateStr = formatDate(o.createdAt);
+            revByDate[dateStr] = (revByDate[dateStr] || 0) + (o.totalAmount || o.totalPrice || 0);
+        });
+        
+        const labelsBar = Object.keys(revByDate).sort((a,b) => {
+            const [d1, m1, y1] = a.split('/');
+            const [d2, m2, y2] = b.split('/');
+            return new Date(`${y1}-${m1}-${d1}`) - new Date(`${y2}-${m2}-${d2}`);
+        });
+        const dataBar = labelsBar.map(date => revByDate[date]);
+
+        const revByProduct = {};
+        validOrders.forEach(o => {
+            if(o.items && Array.isArray(o.items)) {
+                o.items.forEach(item => {
+                    const itemName = item.name || "Sản phẩm khác";
+                    const itemRev = (item.price * (item.quantity || 1));
+                    revByProduct[itemName] = (revByProduct[itemName] || 0) + itemRev;
+                });
+            }
+        });
+
+        const sortedProducts = Object.entries(revByProduct).sort((a, b) => b[1] - a[1]);
+        const top5Products = sortedProducts.slice(0, 5);
+        const labelsPie = top5Products.map(p => p[0]);
+        const dataPie = top5Products.map(p => p[1]);
+
+        if (revenueChartInstance) revenueChartInstance.destroy();
+        if (pieChartInstance) pieChartInstance.destroy();
+
+        const ctxBar = document.getElementById('revenueBarChart').getContext('2d');
+        revenueChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: labelsBar,
+                datasets: [{
+                    label: 'Doanh thu (VNĐ)',
+                    data: dataBar,
+                    backgroundColor: '#007aff',
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const ctxPie = document.getElementById('orderPieChart').getContext('2d');
+        pieChartInstance = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: labelsPie,
+                datasets: [{
+                    data: dataPie,
+                    backgroundColor: ['#ff3b30', '#ff9500', '#34c759', '#007aff', '#5856d6'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // GỌI AI GEMINI
+        try {
+            const topProductsStr = top5Products.map(p => `${p[0]} (${formatPrice(p[1])})`).join(', ');
+            const bottomProductsList = sortedProducts.slice(-3); 
+            const bottomProductsStr = bottomProductsList.map(p => p[0]).join(', ') || "Không có";
+
+            const prompt = `Bạn là chuyên gia cố vấn chiến lược kinh doanh thương mại điện tử.
+            Dữ liệu bán hàng thực tế:
+            - Tổng doanh thu: ${formatPrice(totalRev)}
+            - Số đơn: ${validOrders.length} đơn
+            - Top bán chạy: ${topProductsStr}.
+            - Bán chậm nhất: ${bottomProductsStr}.
+
+            Dựa vào số liệu trên, hãy viết 3 Lời khuyên chiến lược kinh doanh ngắn gọn để tăng doanh thu.
+            Định dạng trả về là HTML đơn giản (chỉ dùng <ul>, <li>, <strong>). KHÔNG viết mở bài kết bài.`;
+
+            const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            const response = await fetch(URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.candidates && data.candidates.length > 0) {
+                    let aiHTML = data.candidates[0].content.parts[0].text;
+                    aiHTML = aiHTML.replace(/```html/g, '').replace(/```/g, '').trim();
+                    document.getElementById('aiAdviceContent').innerHTML = aiHTML;
+                }
+            } else {
+                document.getElementById('aiAdviceContent').innerText = "AI đang bận, không thể phân tích dữ liệu.";
+            }
+        } catch (error) {
+            document.getElementById('aiAdviceContent').innerText = "Lỗi kết nối đến máy chủ AI.";
+        }
+    };
+
+    document.getElementById('timeFilter').addEventListener('change', () => {
+        updateDashboardStatsAndCharts();
+    });
+
+
     // =====================================
-    // LOGIC RENDER DANH MỤC 2 CỘT VÀ CHECKBOX
+    // QUẢN LÝ VOUCHER (FIREBASE)
+    // =====================================
+    const renderVouchersTable = () => {
+        let html = '';
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        vouchersList.forEach(v => {
+            const endDate = new Date(v.endDate);
+            endDate.setHours(23,59,59,999);
+            const isAlive = endDate >= today;
+            
+            const prodName = productsList.find(p => p.id === v.productId)?.name || `ID: ${v.productId}`;
+            
+            html += `<tr>
+                <td><span class="voucher-code">${v.id}</span></td>
+                <td style="color: #6c757d;">${prodName}</td>
+                <td style="color:#ff3b30; font-weight:bold;">-${v.discountPercent}%</td>
+                <td style="font-size:13px;">
+                    Từ: ${formatDate(v.startDate)}<br>Đến: ${formatDate(v.endDate)}
+                </td>
+                <td>
+                    ${isAlive 
+                        ? '<span class="badge-status badge-active">🟢 Đang chạy</span>' 
+                        : '<span class="badge-status badge-expired">🔴 Hết hạn</span>'}
+                </td>
+                <td style="text-align: center;">
+                    <button class="btn-action btn-del" style="background: transparent; border: 1px solid #ff3b30; color: #ff3b30; padding: 6px 12px; border-radius: 8px;" onclick="deleteVoucher('${v.id}')">Xóa</button>
+                </td>
+            </tr>`;
+        });
+        document.getElementById('adminVoucherList').innerHTML = html || '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #86868b;">Chưa có Voucher nào được phát hành.</td></tr>';
+    };
+
+    const setDefaultVoucherDates = () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('vStartDate').value = todayStr;
+        
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        document.getElementById('vEndDate').value = nextWeek.toISOString().split('T')[0];
+    };
+
+    const tabVoucherEl = document.querySelector('li[data-tab="vouchers"]');
+    if(tabVoucherEl) {
+        tabVoucherEl.addEventListener('click', setDefaultVoucherDates);
+    }
+
+    if (document.getElementById('btnGenVoucher')) {
+        document.getElementById('btnGenVoucher').onclick = () => {
+            const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+            document.getElementById('vCode').value = `SS-${randomStr}`;
+        };
+    }
+
+    if (document.getElementById('voucherForm')) {
+        document.getElementById('voucherForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('vCode').value.trim().toUpperCase();
+            const discount = Number(document.getElementById('vDiscount').value);
+            const productId = document.getElementById('vProduct').value;
+            const startDate = document.getElementById('vStartDate').value;
+            const endDate = document.getElementById('vEndDate').value;
+
+            if (discount <= 0 || discount >= 100) {
+                alert('Phần trăm giảm giá phải lớn hơn 0 và nhỏ hơn 100!'); return;
+            }
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Ngày bắt đầu không được lớn hơn ngày kết thúc!'); return;
+            }
+
+            const data = {
+                discountPercent: discount,
+                productId: productId,
+                startDate: startDate,
+                endDate: endDate,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                await setDoc(doc(db, "vouchers", code), data);
+                alert("🎉 Phát hành mã giảm giá thành công!");
+                document.getElementById('voucherForm').reset();
+                setDefaultVoucherDates();
+                loadAdminData();
+            } catch(err) {
+                alert("Có lỗi xảy ra khi lưu Voucher vào hệ thống!");
+            }
+        });
+    }
+
+    window.deleteVoucher = (code) => {
+        if (!window.confirm(`Bạn có chắc chắn muốn thu hồi/xóa mã ${code} này?`)) return;
+        deleteDoc(doc(db, "vouchers", code)).then(() => {
+            alert('Đã xóa mã Voucher!');
+            loadAdminData();
+        }).catch(err => {
+            alert('Lỗi kết nối khi xóa!');
+        });
+    };
+
+
+    // =====================================
+    // QUẢN LÝ DANH MỤC
     // =====================================
     const renderParentCategories = () => {
         const parentListDiv = document.getElementById('parentCategoryList');
@@ -208,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
         parents.forEach(c => {
             const isActive = c.id === activeParentCatId ? 'active' : '';
             const isChecked = selectedCatIds.has(c.id) ? 'checked' : '';
-            
             html += `
             <div class="cat-item ${isActive}" onclick="selectParentCategory('${c.id}')">
                 <div class="cat-item-left">
@@ -264,7 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         childListDiv.innerHTML = html || '<p class="empty-msg">Chưa có danh mục con nào.</p>';
     };
 
-    // LOGIC CHECKBOX & XÓA NHIỀU
     window.toggleCatSelection = (id) => {
         if (selectedCatIds.has(id)) selectedCatIds.delete(id);
         else selectedCatIds.add(id);
@@ -286,12 +537,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const deletePromises = [];
             let idsToDelete = new Set([...selectedCatIds]);
             
-            // Tìm tất cả danh mục con của các mục đang chọn
             selectedCatIds.forEach(id => {
                 categoriesList.filter(c => c.parentId === id).forEach(child => idsToDelete.add(child.id));
             });
 
-            // Lọc và xóa Sản phẩm thuộc các danh mục bị xóa
             const prodSnap = await getDocs(collection(db, "products"));
             prodSnap.forEach(docSnap => {
                 const prod = docSnap.data();
@@ -300,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Xóa Danh mục
             idsToDelete.forEach(id => deletePromises.push(deleteDoc(doc(db, "categories", id))));
 
             await Promise.all(deletePromises);
@@ -311,7 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // QUẢN LÝ DANH MỤC THÊM/SỬA/XÓA CÁ NHÂN
     const catModal = document.getElementById('categoryModal');
     
     document.getElementById('catImageFile').addEventListener('change', async (e) => {
@@ -331,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('catImage').value = ""; 
         document.getElementById('catPreviewImage').style.display = "none";
         document.getElementById('catParentId').value = ""; 
-        document.getElementById('catParentId').disabled = true; // Khóa dropdown
+        document.getElementById('catParentId').disabled = true; 
         document.getElementById('catModalTitle').innerText = "Thêm Danh Mục Gốc";
         catModal.style.display = "block"; 
     };
@@ -343,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('catImage').value = ""; 
         document.getElementById('catPreviewImage').style.display = "none";
         document.getElementById('catParentId').value = activeParentCatId; 
-        document.getElementById('catParentId').disabled = true; // Khóa dropdown
+        document.getElementById('catParentId').disabled = true; 
         document.getElementById('catModalTitle').innerText = "Thêm Danh Mục Con";
         catModal.style.display = "block"; 
     };
@@ -358,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('catId').readOnly = true; 
             document.getElementById('catName').value = cat.name;
             document.getElementById('catParentId').value = cat.parentId || "";
-            document.getElementById('catParentId').disabled = false; // Cho phép đổi cha
+            document.getElementById('catParentId').disabled = false; 
             document.getElementById('catImage').value = cat.imageUrl || ""; 
             
             const preview = document.getElementById('catPreviewImage');
@@ -423,14 +670,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 FStoreDialog.show("Thành công", "Đã xóa danh mục và dữ liệu liên quan!", "info");
                 loadAdminData(); 
             } catch (error) {
-                console.error(error);
                 FStoreDialog.show("Lỗi", "Có lỗi xảy ra khi xóa dữ liệu!", "info");
             }
         });
     };
 
     // =====================================
-    // RENDER SẢN PHẨM & BẢNG SẢN PHẨM
+    // QUẢN LÝ SẢN PHẨM & LỊCH SỬ GIÁ
     // =====================================
     const renderProductsTable = (filterCatId) => {
         let prodHtml = '';
@@ -444,6 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${catName}</td>
                 <td>${p.variants && p.variants.length > 0 ? formatPrice(p.variants[0].price) : "0 đ"}</td>
                 <td>
+                    <button class="btn-action" style="background:#5856d6; color:#fff; margin-right: 5px;" onclick="viewPriceHistory('${p.id}')">Lịch sử giá</button>
                     <button class="btn-action btn-save" onclick="editProduct('${p.id}')" style="margin-right: 5px; background: #f59e0b;">Sửa</button>
                     <button class="btn-action btn-del" onclick="deleteProduct('${p.id}')">Xóa</button>
                 </td>
@@ -479,17 +726,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Chưa có đơn hàng</td></tr>';
     };
 
-    // =====================================
-    // QUẢN LÝ THÔNG SỐ, BIẾN THỂ SẢN PHẨM & LƯU
-    // =====================================
     const prodModal = document.getElementById('productModal');
     const variantsContainer = document.getElementById('variantsContainer');
     const specsContainer = document.getElementById('specsContainer');
     
-    window.addVariantRow = (color = '', storage = '', price = '', images = '') => {
+    window.addVariantRow = (color = '', storage = '', price = '', images = '', variantId = '') => {
         const row = document.createElement('div');
         row.className = 'variant-row';
         row.innerHTML = `
+            <input type="hidden" class="v-id" value="${variantId}">
             <input type="text" placeholder="Quy cách (VD: Thùng 24 lon)" class="v-color" value="${color}" required>
             <input type="text" placeholder="Thể tích (VD: 330ml)" class="v-storage" value="${storage}" required>
             <input type="number" placeholder="Giá tiền" class="v-price" value="${price}" required>
@@ -527,6 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.getElementById('btnAddProduct').onclick = () => { 
+        currentEditingProduct = null; 
         document.getElementById('productForm').reset(); 
         document.getElementById('prodDocId').value = ""; 
         document.getElementById('prodModalTitle').innerText = "Thêm Sản Phẩm Mới";
@@ -542,6 +788,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.editProduct = (id) => {
         const p = productsList.find(x => x.id === id);
         if (!p) return;
+        
+        currentEditingProduct = p; 
+
         document.getElementById('prodModalTitle').innerText = "Sửa Sản Phẩm";
         document.getElementById('prodDocId').value = p.id; 
         document.getElementById('prodName').value = p.name;
@@ -552,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p.variants && p.variants.length > 0) {
             p.variants.forEach(v => {
                 const imgStr = v.images ? v.images.join('|') : (v.image || "");
-                window.addVariantRow(v.color, v.storage, v.price, imgStr);
+                window.addVariantRow(v.color, v.storage, v.price, imgStr, v.variantId || "");
             });
         } else { window.addVariantRow(); }
 
@@ -566,6 +815,41 @@ document.addEventListener('DOMContentLoaded', () => {
         prodModal.style.display = "block";
     };
 
+    const priceHistoryModal = document.getElementById('priceHistoryModal');
+    if (document.getElementById('closeHistoryModal')) {
+        document.getElementById('closeHistoryModal').onclick = () => priceHistoryModal.style.display = 'none';
+    }
+
+    window.viewPriceHistory = (id) => {
+        const p = productsList.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById('historyProductName').innerText = p.name;
+        const tbody = document.getElementById('historyTableBody');
+        let html = '';
+
+        if (!p.priceHistory || p.priceHistory.length === 0) {
+            html = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#86868b;">Sản phẩm này chưa từng thay đổi giá.</td></tr>`;
+        } else {
+            const sortedHistory = [...p.priceHistory].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            
+            sortedHistory.forEach(h => {
+                const varName = `${h.variantColor || ''} ${h.variantStorage ? '- ' + h.variantStorage : ''}`;
+                html += `
+                    <tr>
+                        <td style="font-size: 13px;">${formatDateTime(h.updatedAt)}</td>
+                        <td>${varName}</td>
+                        <td style="text-decoration: line-through; color: #86868b;">${formatPrice(h.oldPrice)}</td>
+                        <td style="color: #ff3b30; font-weight: bold;">${formatPrice(h.newPrice)}</td>
+                        <td style="font-size: 12px; color: #666;">${h.updatedBy || 'Không rõ'}</td>
+                    </tr>
+                `;
+            });
+        }
+        tbody.innerHTML = html;
+        priceHistoryModal.style.display = 'block';
+    };
+
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -573,8 +857,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('#variantsContainer .variant-row').forEach((row, index) => {
             const rawImages = row.querySelector('.v-image').value;
             const imgArray = rawImages.split('|').map(img => img.trim()).filter(img => img !== '');
+            
+            let varId = row.querySelector('.v-id').value;
+            if (!varId) varId = `v_${Date.now()}_${index}`;
+
             variants.push({
-                variantId: `v${index + 1}`,
+                variantId: varId,
                 color: row.querySelector('.v-color').value,
                 storage: row.querySelector('.v-storage').value,
                 price: Number(row.querySelector('.v-price').value),
@@ -599,11 +887,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEdit = !!existingDocId; 
         const finalId = isEdit ? existingDocId : "prod_" + Date.now();
 
+        // Ghi nhận lịch sử giá
+        let priceHistoryArray = (isEdit && currentEditingProduct && currentEditingProduct.priceHistory) 
+                                ? currentEditingProduct.priceHistory 
+                                : [];
+
+        if (isEdit && currentEditingProduct) {
+            variants.forEach(newVar => {
+                const oldVar = currentEditingProduct.variants.find(v => v.variantId === newVar.variantId);
+                if (oldVar && Number(oldVar.price) !== Number(newVar.price)) {
+                    priceHistoryArray.push({
+                        variantColor: newVar.color,
+                        variantStorage: newVar.storage,
+                        oldPrice: Number(oldVar.price),
+                        newPrice: Number(newVar.price),
+                        updatedAt: new Date().toISOString(), 
+                        updatedBy: currentUserEmail 
+                    });
+                }
+            });
+        }
+
         const data = {
-            id: finalId, name: document.getElementById('prodName').value.trim(),
+            id: finalId, 
+            name: document.getElementById('prodName').value.trim(),
             categoryId: document.getElementById('prodCategory').value,
             description: document.getElementById('prodDesc').value.trim(),
-            techSpecs: techSpecs, variants: variants
+            techSpecs: techSpecs, 
+            variants: variants,
+            priceHistory: priceHistoryArray 
         };
 
         if (isEdit) {
@@ -611,10 +923,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             await setDoc(doc(db, "products", finalId), data);
         }
-        
-        try {
-            // await fetch('https://localhost:5001/api/PriceHistory/Record', ... );
-        } catch(err) {}
         
         FStoreDialog.show("Thành công", isEdit ? "Đã cập nhật sản phẩm!" : "Đã thêm sản phẩm!", "info");
         prodModal.style.display = "none";
