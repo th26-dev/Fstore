@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filterSelect.onchange = (e) => renderProductsTable(e.target.value);
         }
 
-        // Dropdown lọc ở tab Quản lý Giá (MỚI)
+        // Dropdown lọc ở tab Quản lý Giá
         const filterPricingSelect = document.getElementById('filterPricingCategory');
         if (filterPricingSelect) {
             const currentPricingFilter = filterPricingSelect.value;
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vProductSelect) vProductSelect.innerHTML = vProdHtml;
 
         renderProductsTable(filterSelect ? filterSelect.value : "all");
-        renderPricingTable(filterPricingSelect ? filterPricingSelect.value : "all"); // Gắn biến lọc cho Bảng Giá
+        renderPricingTable(filterPricingSelect ? filterPricingSelect.value : "all");
 
         // 3. TẢI ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
@@ -361,20 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const errData = await response.json();
                 console.error("Lỗi từ GroqCloud:", errData);
-                throw new Error("Groq API Key lỗi hoặc bị giới hạn");
+                throw new Error("Lỗi API từ GroqCloud");
             }
         } catch (error) {
             console.error("Chi tiết lỗi AI:", error);
-            
+            // Kịch bản khi bị lỗi (Đã xóa bỏ hoàn toàn HTML giả mạo, chỉ hiện lỗi ngắn gọn)
             document.getElementById('aiAdviceContent').innerHTML = `
-                <p style="color: #ea580c; font-style: italic; margin-bottom: 15px; font-size: 13px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Máy chủ AI GroqCloud phản hồi chậm. Hệ thống tự động chuyển sang chế độ tư vấn dự phòng:
+                <p style="color: #ff3b30; font-weight: 500; margin: 0; font-size: 14px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Máy chủ AI đang bảo trì hoặc API Key bị giới hạn. Không thể tải phân tích ngay lúc này.
                 </p>
-                <ul style="margin-left: 20px;">
-                    <li style="margin-bottom: 10px;"><strong>Đẩy mạnh sản phẩm chủ lực:</strong> Tập trung ngân sách quảng cáo và hiển thị vị trí đẹp cho các sản phẩm Top bán chạy để tối đa hóa biên lợi nhuận.</li>
-                    <li style="margin-bottom: 10px;"><strong>Xử lý hàng tồn kho:</strong> Thiết lập các chương trình Giảm giá (Flash Sale) hoặc tạo mã Voucher cho các sản phẩm bán chậm để thu hồi vốn nhanh chóng.</li>
-                    <li><strong>Chăm sóc khách hàng cũ:</strong> Phân tích dữ liệu đơn hàng và gửi Email chứa mã khuyến mãi riêng cho khách hàng đã từng mua sắm để kích thích tỷ lệ quay lại (Retention Rate).</li>
-                </ul>
             `;
         }
     };
@@ -968,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: center;">${promoStatus}</td>
                 <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: right;">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                        <button class="btn-action" style="background:#007aff; color:#fff; padding: 6px 12px; font-size: 13px;" onclick="openPromoModal('${p.id}')">Thay đổi giá</button>
+                        <button class="btn-action" style="background:#007aff; color:#fff; padding: 6px 12px; font-size: 13px;" onclick="openPromoModal('${p.id}')">Cập nhật KM</button>
                         <button class="btn-action" style="background:#f5f5f7; color:#1d1d1f; border: 1px solid #d2d2d7; padding: 6px 12px; font-size: 13px;" onclick="viewPriceHistory('${p.id}')"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</button>
                     </div>
                     ${hasPromo ? `<button class="btn-action" style="background:transparent; color:#ff3b30; border: none; padding: 6px 0; font-size: 13px; text-decoration: underline; margin-top: 5px;" onclick="removePromo('${p.id}')">Hủy khuyến mãi</button>` : ''}
@@ -984,9 +979,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('closePromoModal').onclick = () => promoPriceModal.style.display = 'none';
     }
 
-
-
-    
     window.openPromoModal = (productId) => {
         const p = productsList.find(x => x.id === productId);
         if (!p) return;
@@ -1153,8 +1145,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Lấy Tên sản phẩm trong đơn để Chủ Shop biết là Điện thoại hay Bia
             let itemsPreview = "Không rõ";
             if (o.items && Array.isArray(o.items)) {
+                // Đã bỏ dòng cắt chuỗi (substring 50 ký tự) để hiển thị đầy đủ tên
                 itemsPreview = o.items.map(item => item.name).join(', ');
-                if (itemsPreview.length > 50) itemsPreview = itemsPreview.substring(0, 50) + "...";
             }
 
             orderHtml += `<tr>
@@ -1163,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td>${o.orderId || o.id}</td>
                 <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
-                <td style="color: #666; font-size: 13px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${o.items ? o.items.map(i=>i.name).join(', ') : ''}">
+                <td style="color: #666; font-size: 13px; max-width: 350px; line-height: 1.4;">
                     ${itemsPreview}
                 </td>
                 <td>${formatDate(o.createdAt)}</td> 
