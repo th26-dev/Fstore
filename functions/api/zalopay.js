@@ -42,6 +42,7 @@ export async function onRequest(context) {
 
         const safeDescription = `FStore - Thanh toan don hang #${orderId}`.replace(/[^\w\s-]/g, '');
 
+        // Chuỗi dữ liệu tạo chữ ký (MAC) TUYỆT ĐỐI GIỮ NGUYÊN, không được thêm bank_code vào đây
         const dataString = `${appId}|${app_trans_id}|FStore_User|${amount}|${app_time}|${embed_data}|${item}`;
 
         const encoder = new TextEncoder();
@@ -63,7 +64,10 @@ export async function onRequest(context) {
             embed_data: embed_data,
             amount: Number(amount),
             description: safeDescription, 
-            bank_code: "", 
+            
+            // ĐÃ CẬP NHẬT: Tham số này ép ZaloPay bỏ qua cổng chọn phương thức và mở thẳng mã QR
+            bank_code: "zalopayapp", 
+            
             mac: mac
         };
 
