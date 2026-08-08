@@ -125,12 +125,12 @@
                     </div>
                 </div>
                 <table class="data-table">
-                    <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá gốc (Từ)</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Tên sản phẩm & SEO Link</th><th>Danh mục</th><th>Giá gốc (Từ)</th><th>Thao tác</th></tr></thead>
                     <tbody id="adminProductList"></tbody>
                 </table>
             </div>
 
-           <!-- TAB QUẢN LÝ GIÁ (ĐÃ NÂNG CẤP GIAO DIỆN & LỌC DANH MỤC) -->
+            <!-- TAB QUẢN LÝ GIÁ -->
             <div id="tab-pricing" class="tab-content">
                 <div class="flex-between" style="margin-bottom: 20px; align-items: flex-end;">
                     <div>
@@ -165,12 +165,11 @@
                 </div>
             </div>
 
-           <!-- TAB ĐƠN HÀNG (ĐÃ NÂNG CẤP DỌN DẸP HÀNG LOẠT) -->
+            <!-- TAB ĐƠN HÀNG -->
             <div id="tab-orders" class="tab-content">
                 <div class="flex-between" style="margin-bottom: 20px;">
                     <h3>Quản lý đơn hàng</h3>
                     <div style="display: flex; gap: 15px; align-items: center;">
-                        <!-- Nút Xóa hàng loạt (Sẽ ẩn/hiện tự động bằng JS) -->
                         <button class="btn-action btn-del" id="btnDeleteMultipleOrders" style="display: none; background: #ff3b30; align-items: center; gap: 8px;">
                             <i class="fa-solid fa-trash"></i> Xóa các đơn đã chọn (<span id="selectedOrderCount">0</span>)
                         </button>
@@ -335,7 +334,7 @@
         </div>
     </div>
 
-    <!-- MODAL QUẢN LÝ SẢN PHẨM -->
+    <!-- MODAL QUẢN LÝ SẢN PHẨM (ĐÃ BỔ SUNG Ô XEM TRƯỚC SLUG) -->
     <div id="productModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeProdModal">&times;</span>
@@ -345,6 +344,11 @@
                 <div class="form-group">
                     <label>Tên Sản Phẩm</label>
                     <input type="text" id="prodName" required>
+                    <!-- Ô hiển thị SEO Slug -->
+                    <div style="margin-top: 5px; font-size: 13px; color: #86868b; background: #f5f5f7; padding: 6px 10px; border-radius: 6px; border: 1px solid #e5e5ea;">
+                        <i class="fa-solid fa-link" style="color: #007aff; margin-right: 5px;"></i><strong>SEO Link:</strong> 
+                        <span id="prodSlugPreview" style="color: #007aff;">chua-co-link</span>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Danh Mục (Lấy động từ Database)</label>
@@ -371,7 +375,7 @@
         </div>
     </div>
 
-    <!-- MODAL CẬP NHẬT GIÁ KHUYẾN MÃI (MỚI) -->
+    <!-- MODAL CẬP NHẬT GIÁ KHUYẾN MÃI -->
     <div id="promoPriceModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <span class="close-modal" id="closePromoModal">&times;</span>
@@ -402,7 +406,7 @@
         </div>
     </div>
 
-    <!-- MODAL LỊCH SỬ THAY ĐỔI GIÁ (ĐÃ UPDATE CHO KHUYẾN MÃI) -->
+    <!-- MODAL LỊCH SỬ THAY ĐỔI GIÁ -->
     <div id="priceHistoryModal" class="modal">
         <div class="modal-content" style="max-width: 750px;">
             <span class="close-modal" id="closeHistoryModal">&times;</span>

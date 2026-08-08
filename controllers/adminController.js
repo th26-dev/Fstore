@@ -4,7 +4,8 @@ import { doc, getDoc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, 
 
 document.addEventListener('DOMContentLoaded', () => {
     // === CẤU HÌNH API KEY GROQCLOUD ===
-    const API_KEY = "";
+    // (Khuyên dùng: Nếu muốn push lên GitHub, hãy xóa trắng key này trước khi push, sau đó dán lại)
+    const API_KEY = "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";
 
     const adminEmail = document.getElementById('adminEmail');
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
@@ -58,6 +59,27 @@ document.addEventListener('DOMContentLoaded', () => {
         close: function() {
             document.getElementById('fstorePopup').style.display = 'none';
         }
+    };
+
+    // ==========================================
+    // THUẬT TOÁN TẠO SEO SLUG TỪ TIẾNG VIỆT
+    // ==========================================
+    const generateSeoSlug = (str) => {
+        str = str.replace(/^\s+|\s+$/g, ''); // Bỏ khoảng trắng 2 đầu
+        str = str.toLowerCase(); // Chuyển về chữ thường
+        
+        // Cắt bỏ dấu Tiếng Việt
+        const from = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ·/_,:;";
+        const to   = "aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd------";
+        for (let i = 0, l = from.length; i < l; i++) {
+            str = str.replace(new RegExp(from.charAt(i), 'g'), to.charAt(i));
+        }
+
+        str = str.replace(/[^a-z0-9 -]/g, '') // Xóa các ký tự đặc biệt
+            .replace(/\s+/g, '-') // Đổi khoảng trắng thành gạch ngang
+            .replace(/-+/g, '-'); // Tránh tình trạng 2 gạch ngang liên tiếp (VD: --)
+            
+        return str;
     };
 
     const compressImage = (file) => {
@@ -169,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filterSelect.onchange = (e) => renderProductsTable(e.target.value);
         }
 
-        // Dropdown lọc ở tab Quản lý Giá (MỚI)
+        // Dropdown lọc ở tab Quản lý Giá
         const filterPricingSelect = document.getElementById('filterPricingCategory');
         if (filterPricingSelect) {
             const currentPricingFilter = filterPricingSelect.value;
@@ -194,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vProductSelect) vProductSelect.innerHTML = vProdHtml;
 
         renderProductsTable(filterSelect ? filterSelect.value : "all");
-        renderPricingTable(filterPricingSelect ? filterPricingSelect.value : "all"); // Gắn biến lọc cho Bảng Giá
+        renderPricingTable(filterPricingSelect ? filterPricingSelect.value : "all");
 
         // 3. TẢI ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
@@ -361,20 +383,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const errData = await response.json();
                 console.error("Lỗi từ GroqCloud:", errData);
-                throw new Error("Groq API Key lỗi hoặc bị giới hạn");
+                throw new Error("Lỗi API từ GroqCloud");
             }
         } catch (error) {
             console.error("Chi tiết lỗi AI:", error);
-            
+            // Kịch bản khi bị lỗi 
             document.getElementById('aiAdviceContent').innerHTML = `
-                <p style="color: #ea580c; font-style: italic; margin-bottom: 15px; font-size: 13px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Máy chủ AI GroqCloud phản hồi chậm. Hệ thống tự động chuyển sang chế độ tư vấn dự phòng:
+                <p style="color: #ff3b30; font-weight: 500; margin: 0; font-size: 14px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Máy chủ AI đang bảo trì hoặc API Key bị giới hạn. Không thể tải phân tích ngay lúc này.
                 </p>
-                <ul style="margin-left: 20px;">
-                    <li style="margin-bottom: 10px;"><strong>Đẩy mạnh sản phẩm chủ lực:</strong> Tập trung ngân sách quảng cáo và hiển thị vị trí đẹp cho các sản phẩm Top bán chạy để tối đa hóa biên lợi nhuận.</li>
-                    <li style="margin-bottom: 10px;"><strong>Xử lý hàng tồn kho:</strong> Thiết lập các chương trình Giảm giá (Flash Sale) hoặc tạo mã Voucher cho các sản phẩm bán chậm để thu hồi vốn nhanh chóng.</li>
-                    <li><strong>Chăm sóc khách hàng cũ:</strong> Phân tích dữ liệu đơn hàng và gửi Email chứa mã khuyến mãi riêng cho khách hàng đã từng mua sắm để kích thích tỷ lệ quay lại (Retention Rate).</li>
-                </ul>
             `;
         }
     };
@@ -713,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // =====================================
-    // QUẢN LÝ SẢN PHẨM 
+    // QUẢN LÝ SẢN PHẨM (TÍCH HỢP TẠO SEO SLUG)
     // =====================================
     const renderProductsTable = (filterCatId) => {
         let prodHtml = '';
@@ -722,8 +739,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filteredProducts.forEach(p => {
             const catName = categoriesList.find(c => c.id === p.categoryId)?.name || "Chưa phân loại";
+            
+            // Hiển thị Link SEO bên dưới Tên sản phẩm
+            const seoText = p.slug ? `<br><span style="font-size: 12px; color: #86868b; font-weight: normal;"><i class="fa-solid fa-link"></i> /product/${p.slug}</span>` : '';
+
             prodHtml += `<tr>
-                <td>${p.name}</td>
+                <td>
+                    <strong style="color: #1d1d1f;">${p.name}</strong>
+                    ${seoText}
+                </td>
                 <td>${catName}</td>
                 <td>${p.variants && p.variants.length > 0 ? formatPrice(p.variants[0].price) : "0 đ"}</td>
                 <td>
@@ -827,6 +851,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        const productNameInput = document.getElementById('prodName').value.trim();
+        // TỰ ĐỘNG TẠO SEO SLUG TỪ TÊN SẢN PHẨM
+        const productSlug = generateSeoSlug(productNameInput);
+
         const variants = [];
         document.querySelectorAll('#variantsContainer .variant-row').forEach((row, index) => {
             const rawImages = row.querySelector('.v-image').value;
@@ -885,7 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = {
             id: finalId, 
-            name: document.getElementById('prodName').value.trim(),
+            name: productNameInput,
+            slug: productSlug, // <--- BỔ SUNG SLUG VÀO DATABASE
             categoryId: document.getElementById('prodCategory').value,
             description: document.getElementById('prodDesc').value.trim(),
             techSpecs: techSpecs, 
@@ -968,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: center;">${promoStatus}</td>
                 <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: right;">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                        <button class="btn-action" style="background:#007aff; color:#fff; padding: 6px 12px; font-size: 13px;" onclick="openPromoModal('${p.id}')">Thay đổi giá</button>
+                        <button class="btn-action" style="background:#007aff; color:#fff; padding: 6px 12px; font-size: 13px;" onclick="openPromoModal('${p.id}')">Cập nhật KM</button>
                         <button class="btn-action" style="background:#f5f5f7; color:#1d1d1f; border: 1px solid #d2d2d7; padding: 6px 12px; font-size: 13px;" onclick="viewPriceHistory('${p.id}')"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</button>
                     </div>
                     ${hasPromo ? `<button class="btn-action" style="background:transparent; color:#ff3b30; border: none; padding: 6px 0; font-size: 13px; text-decoration: underline; margin-top: 5px;" onclick="removePromo('${p.id}')">Hủy khuyến mãi</button>` : ''}
@@ -984,9 +1013,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('closePromoModal').onclick = () => promoPriceModal.style.display = 'none';
     }
 
-
-
-    
     window.openPromoModal = (productId) => {
         const p = productsList.find(x => x.id === productId);
         if (!p) return;
@@ -1154,7 +1180,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let itemsPreview = "Không rõ";
             if (o.items && Array.isArray(o.items)) {
                 itemsPreview = o.items.map(item => item.name).join(', ');
-                if (itemsPreview.length > 50) itemsPreview = itemsPreview.substring(0, 50) + "...";
             }
 
             orderHtml += `<tr>
@@ -1163,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td>${o.orderId || o.id}</td>
                 <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
-                <td style="color: #666; font-size: 13px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${o.items ? o.items.map(i=>i.name).join(', ') : ''}">
+                <td style="color: #666; font-size: 13px; max-width: 350px; line-height: 1.4;">
                     ${itemsPreview}
                 </td>
                 <td>${formatDate(o.createdAt)}</td> 
