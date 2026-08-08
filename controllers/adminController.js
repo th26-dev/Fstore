@@ -3,8 +3,8 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { doc, getDoc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
-    // === CẤU HÌNH API KEY GEMINI ===
-    const API_KEY = "AQ.Ab8RN6IqPCRc4fNYVX4TUfA_-hngxuQP4M6fzTDEDCtB1AETwQ";
+    // === CẤU HÌNH API KEY GROQCLOUD ===
+    const API_KEY = "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";
 
     const adminEmail = document.getElementById('adminEmail');
     const tabs = document.querySelectorAll('.nav-menu li[data-tab]');
@@ -12,8 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUserEmail = ""; 
     let currentEditingProduct = null; 
-
-    // Biến cho Chart.js
     let revenueChartInstance = null;
     let pieChartInstance = null;
 
@@ -144,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const loadAdminData = async () => {
-        // 1. TẢI DANH MỤC
+        // 1. TẢI DANH MỤC VÀ ĐỔ VÀO CÁC DROPDOWN
         const catSnap = await getDocs(query(collection(db, "categories"), orderBy("order")));
         categoriesList = [];
         let parentOptionsHtml = '<option value="">-- Không có (Danh mục gốc) --</option>';
@@ -162,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('catParentId').innerHTML = parentOptionsHtml;
         document.getElementById('prodCategory').innerHTML = prodCatOptionsHtml;
         
+        // Dropdown lọc ở tab Sản phẩm
         const filterSelect = document.getElementById('filterProductCategory');
         if (filterSelect) {
             const currentFilter = filterSelect.value;
@@ -169,6 +168,16 @@ document.addEventListener('DOMContentLoaded', () => {
             filterSelect.value = currentFilter || "all";
             filterSelect.onchange = (e) => renderProductsTable(e.target.value);
         }
+
+        // Dropdown lọc ở tab Quản lý Giá (MỚI)
+        const filterPricingSelect = document.getElementById('filterPricingCategory');
+        if (filterPricingSelect) {
+            const currentPricingFilter = filterPricingSelect.value;
+            filterPricingSelect.innerHTML = filterCatOptionsHtml;
+            filterPricingSelect.value = currentPricingFilter || "all";
+            filterPricingSelect.onchange = (e) => renderPricingTable(e.target.value);
+        }
+
         renderParentCategories();
 
         // 2. TẢI SẢN PHẨM
@@ -185,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vProductSelect) vProductSelect.innerHTML = vProdHtml;
 
         renderProductsTable(filterSelect ? filterSelect.value : "all");
+        renderPricingTable(filterPricingSelect ? filterPricingSelect.value : "all"); // Gắn biến lọc cho Bảng Giá
 
         // 3. TẢI ĐƠN HÀNG
         const orderSnap = await getDocs(collection(db, "orders"));
@@ -226,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ============================================================================
-    // VẼ BIỂU ĐỒ & AI PHÂN TÍCH (GEMINI) DỰA TRÊN DỮ LIỆU ĐƠN HÀNG
+    // VẼ BIỂU ĐỒ & AI PHÂN TÍCH (GROQCLOUD) DỰA TRÊN DỮ LIỆU ĐƠN HÀNG
     // ============================================================================
     const updateDashboardStatsAndCharts = async () => {
         let totalRev = 0;
@@ -304,7 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // GỌI AI GEMINI
+        // ===============================================
+        // GỌI AI GROQCLOUD BẰNG MÔ HÌNH LLAMA 3 SIÊU TỐC
+        // ===============================================
         try {
             const topProductsStr = top5Products.map(p => `${p[0]} (${formatPrice(p[1])})`).join(', ');
             const bottomProductsList = sortedProducts.slice(-3); 
@@ -320,25 +332,50 @@ document.addEventListener('DOMContentLoaded', () => {
             Dựa vào số liệu trên, hãy viết 3 Lời khuyên chiến lược kinh doanh ngắn gọn để tăng doanh thu.
             Định dạng trả về là HTML đơn giản (chỉ dùng <ul>, <li>, <strong>). KHÔNG viết mở bài kết bài.`;
 
-            const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            const URL = `https://api.groq.com/openai/v1/chat/completions`;
             const response = await fetch(URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${API_KEY}` 
+                },
+                body: JSON.stringify({ 
+                    model: "llama-3.1-8b-instant", 
+                    messages: [
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7
+                })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                if (data.candidates && data.candidates.length > 0) {
-                    let aiHTML = data.candidates[0].content.parts[0].text;
+                if (data.choices && data.choices.length > 0) {
+                    let aiHTML = data.choices[0].message.content;
                     aiHTML = aiHTML.replace(/```html/g, '').replace(/```/g, '').trim();
                     document.getElementById('aiAdviceContent').innerHTML = aiHTML;
                 }
             } else {
-                document.getElementById('aiAdviceContent').innerText = "AI đang bận, không thể phân tích dữ liệu.";
+                const errData = await response.json();
+                console.error("Lỗi từ GroqCloud:", errData);
+                throw new Error("Groq API Key lỗi hoặc bị giới hạn");
             }
         } catch (error) {
-            document.getElementById('aiAdviceContent').innerText = "Lỗi kết nối đến máy chủ AI.";
+            console.error("Chi tiết lỗi AI:", error);
+            
+            document.getElementById('aiAdviceContent').innerHTML = `
+                <p style="color: #ea580c; font-style: italic; margin-bottom: 15px; font-size: 13px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Máy chủ AI GroqCloud phản hồi chậm. Hệ thống tự động chuyển sang chế độ tư vấn dự phòng:
+                </p>
+                <ul style="margin-left: 20px;">
+                    <li style="margin-bottom: 10px;"><strong>Đẩy mạnh sản phẩm chủ lực:</strong> Tập trung ngân sách quảng cáo và hiển thị vị trí đẹp cho các sản phẩm Top bán chạy để tối đa hóa biên lợi nhuận.</li>
+                    <li style="margin-bottom: 10px;"><strong>Xử lý hàng tồn kho:</strong> Thiết lập các chương trình Giảm giá (Flash Sale) hoặc tạo mã Voucher cho các sản phẩm bán chậm để thu hồi vốn nhanh chóng.</li>
+                    <li><strong>Chăm sóc khách hàng cũ:</strong> Phân tích dữ liệu đơn hàng và gửi Email chứa mã khuyến mãi riêng cho khách hàng đã từng mua sắm để kích thích tỷ lệ quay lại (Retention Rate).</li>
+                </ul>
+            `;
         }
     };
 
@@ -676,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // =====================================
-    // QUẢN LÝ SẢN PHẨM & LỊCH SỬ GIÁ
+    // QUẢN LÝ SẢN PHẨM 
     // =====================================
     const renderProductsTable = (filterCatId) => {
         let prodHtml = '';
@@ -690,40 +727,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${catName}</td>
                 <td>${p.variants && p.variants.length > 0 ? formatPrice(p.variants[0].price) : "0 đ"}</td>
                 <td>
-                    <button class="btn-action" style="background:#5856d6; color:#fff; margin-right: 5px;" onclick="viewPriceHistory('${p.id}')">Lịch sử giá</button>
                     <button class="btn-action btn-save" onclick="editProduct('${p.id}')" style="margin-right: 5px; background: #f59e0b;">Sửa</button>
                     <button class="btn-action btn-del" onclick="deleteProduct('${p.id}')">Xóa</button>
                 </td>
             </tr>`;
         });
         document.getElementById('adminProductList').innerHTML = prodHtml || '<tr><td colspan="4" style="text-align: center; padding: 20px;">Không có sản phẩm nào</td></tr>';
-    };
-
-    const renderOrdersTable = () => {
-        const sortVal = document.getElementById('sortOrderSelect')?.value || 'newest';
-        let sortedOrders = [...ordersList];
-        sortedOrders.sort((a, b) => {
-            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt).getTime() || 0);
-            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt).getTime() || 0);
-            return sortVal === 'newest' ? timeB - timeA : timeA - timeB; 
-        });
-
-        let orderHtml = '';
-        sortedOrders.forEach(o => {
-            let statusColor = "#f59e0b";
-            if (o.status === "Đang giao" || o.status === "Shipped") statusColor = "#007aff";
-            if (o.status === "Hoàn thành" || o.status === "Completed") statusColor = "#34c759";
-            if (o.status === "Đã thanh toán" || o.status === "Chờ duyệt") statusColor = "#34c759"; 
-            if (o.status === "Đã hủy" || o.status === "Cancelled") statusColor = "#ff3b30";
-
-            orderHtml += `<tr>
-                <td>${o.orderId || o.id}</td>
-                <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
-                <td>${formatDate(o.createdAt)}</td> <td><strong>${formatPrice(o.totalAmount || o.totalPrice || 0)}</strong></td>
-                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ thanh toán'}</span></td>
-            </tr>`;
-        });
-        document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="5" style="text-align: center; padding: 20px;">Chưa có đơn hàng</td></tr>';
     };
 
     const prodModal = document.getElementById('productModal');
@@ -815,41 +824,6 @@ document.addEventListener('DOMContentLoaded', () => {
         prodModal.style.display = "block";
     };
 
-    const priceHistoryModal = document.getElementById('priceHistoryModal');
-    if (document.getElementById('closeHistoryModal')) {
-        document.getElementById('closeHistoryModal').onclick = () => priceHistoryModal.style.display = 'none';
-    }
-
-    window.viewPriceHistory = (id) => {
-        const p = productsList.find(x => x.id === id);
-        if (!p) return;
-
-        document.getElementById('historyProductName').innerText = p.name;
-        const tbody = document.getElementById('historyTableBody');
-        let html = '';
-
-        if (!p.priceHistory || p.priceHistory.length === 0) {
-            html = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#86868b;">Sản phẩm này chưa từng thay đổi giá.</td></tr>`;
-        } else {
-            const sortedHistory = [...p.priceHistory].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-            
-            sortedHistory.forEach(h => {
-                const varName = `${h.variantColor || ''} ${h.variantStorage ? '- ' + h.variantStorage : ''}`;
-                html += `
-                    <tr>
-                        <td style="font-size: 13px;">${formatDateTime(h.updatedAt)}</td>
-                        <td>${varName}</td>
-                        <td style="text-decoration: line-through; color: #86868b;">${formatPrice(h.oldPrice)}</td>
-                        <td style="color: #ff3b30; font-weight: bold;">${formatPrice(h.newPrice)}</td>
-                        <td style="font-size: 12px; color: #666;">${h.updatedBy || 'Không rõ'}</td>
-                    </tr>
-                `;
-            });
-        }
-        tbody.innerHTML = html;
-        priceHistoryModal.style.display = 'block';
-    };
-
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -887,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEdit = !!existingDocId; 
         const finalId = isEdit ? existingDocId : "prod_" + Date.now();
 
-        // Ghi nhận lịch sử giá
+        // Ghi nhận lịch sử giá gốc
         let priceHistoryArray = (isEdit && currentEditingProduct && currentEditingProduct.priceHistory) 
                                 ? currentEditingProduct.priceHistory 
                                 : [];
@@ -897,6 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldVar = currentEditingProduct.variants.find(v => v.variantId === newVar.variantId);
                 if (oldVar && Number(oldVar.price) !== Number(newVar.price)) {
                     priceHistoryArray.push({
+                        type: 'BASE_PRICE',
                         variantColor: newVar.color,
                         variantStorage: newVar.storage,
                         oldPrice: Number(oldVar.price),
@@ -936,6 +911,328 @@ document.addEventListener('DOMContentLoaded', () => {
             FStoreDialog.show("Thành công", "Đã xóa sản phẩm thành công", "info");
         });
     };
+
+    // =====================================
+    // QUẢN LÝ GIÁ (PROMOTION & HISTORY) ĐÃ NÂNG CẤP GIAO DIỆN
+    // =====================================
+    const renderPricingTable = (filterCatId = "all") => {
+        let html = '';
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // Lọc sản phẩm theo danh mục ở Tab Pricing
+        const filteredProducts = (filterCatId === "all") ? productsList : productsList.filter(p => p.categoryId === filterCatId);
+
+        filteredProducts.forEach(p => {
+            const hasPromo = p.currentPromotion;
+            let promoStatus = '';
+            let promoDetails = '<span style="color:#86868b; font-style:italic; font-size: 13px;">Chưa có chương trình</span>';
+            
+            if (hasPromo) {
+                const endDate = new Date(p.currentPromotion.endDate);
+                endDate.setHours(23,59,59,999);
+                const isAlive = endDate >= today;
+                
+                promoDetails = `
+                    <div style="background: #fff0f0; border-left: 3px solid #ff3b30; padding: 8px 12px; border-radius: 4px;">
+                        <strong style="color:#ff3b30; font-size: 15px;">${formatPrice(p.currentPromotion.promoPrice)}</strong><br>
+                        <span style="font-size:12px; color: #666;"><i class="fa-regular fa-clock"></i> ${formatDate(p.currentPromotion.startDate)} - ${formatDate(p.currentPromotion.endDate)}</span>
+                    </div>
+                `;
+                promoStatus = isAlive ? '<span class="badge-status badge-active">🟢 Đang chạy</span>' : '<span class="badge-status badge-expired">🔴 Hết hạn</span>';
+            } else {
+                promoStatus = '<span class="badge-status" style="background:#f2f2f7; color:#86868b;">Trống</span>';
+            }
+
+            // Tạo danh sách biến thể đẹp mắt
+            let variantsHtml = '';
+            if (p.variants && p.variants.length > 0) {
+                p.variants.forEach(v => {
+                    variantsHtml += `<div style="font-size:13px; color:#555; margin-bottom: 4px;">
+                        &bull; ${v.color} ${v.storage ? '- ' + v.storage : ''}: 
+                        <strong style="color: #1d1d1f;">${formatPrice(v.price)}</strong>
+                    </div>`;
+                });
+            } else {
+                variantsHtml = `<div style="font-size:13px; color:#86868b;">Chưa có phân loại</div>`;
+            }
+
+            html += `<tr style="transition: 0.2s; cursor: default;">
+                <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea;">
+                    <strong style="color: #1d1d1f; font-size: 14px;">${p.name}</strong>
+                </td>
+                <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea;">
+                    ${variantsHtml}
+                </td>
+                <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea;">${promoDetails}</td>
+                <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: center;">${promoStatus}</td>
+                <td style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button class="btn-action" style="background:#007aff; color:#fff; padding: 6px 12px; font-size: 13px;" onclick="openPromoModal('${p.id}')">Thay đổi giá</button>
+                        <button class="btn-action" style="background:#f5f5f7; color:#1d1d1f; border: 1px solid #d2d2d7; padding: 6px 12px; font-size: 13px;" onclick="viewPriceHistory('${p.id}')"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</button>
+                    </div>
+                    ${hasPromo ? `<button class="btn-action" style="background:transparent; color:#ff3b30; border: none; padding: 6px 0; font-size: 13px; text-decoration: underline; margin-top: 5px;" onclick="removePromo('${p.id}')">Hủy khuyến mãi</button>` : ''}
+                </td>
+            </tr>`;
+        });
+        
+        document.getElementById('adminPricingList').innerHTML = html || '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #86868b;">Không có dữ liệu sản phẩm trong danh mục này.</td></tr>';
+    };
+
+    const promoPriceModal = document.getElementById('promoPriceModal');
+    if (document.getElementById('closePromoModal')) {
+        document.getElementById('closePromoModal').onclick = () => promoPriceModal.style.display = 'none';
+    }
+
+    window.openPromoModal = (productId) => {
+        const p = productsList.find(x => x.id === productId);
+        if (!p) return;
+
+        document.getElementById('promoProductName').innerText = p.name;
+        document.getElementById('promoProductId').value = p.id;
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('promoStart').value = todayStr;
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        document.getElementById('promoEnd').value = nextWeek.toISOString().split('T')[0];
+
+        let variantOptions = '';
+        if (p.variants && p.variants.length > 0) {
+            p.variants.forEach(v => {
+                const vName = `${v.color} ${v.storage ? '- ' + v.storage : ''} (Gốc: ${formatPrice(v.price)})`;
+                variantOptions += `<option value="${v.variantId}">${vName}</option>`;
+            });
+        }
+        document.getElementById('promoVariant').innerHTML = variantOptions;
+        document.getElementById('promoPrice').value = '';
+        
+        promoPriceModal.style.display = 'block';
+    };
+
+    if (document.getElementById('promoForm')) {
+        document.getElementById('promoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productId = document.getElementById('promoProductId').value;
+            const variantId = document.getElementById('promoVariant').value;
+            const newPrice = Number(document.getElementById('promoPrice').value);
+            const startDate = document.getElementById('promoStart').value;
+            const endDate = document.getElementById('promoEnd').value;
+
+            if (new Date(startDate) > new Date(endDate)) {
+                FStoreDialog.show("Lỗi", "Ngày bắt đầu không được lớn hơn ngày kết thúc!", "info");
+                return;
+            }
+
+            const product = productsList.find(p => p.id === productId);
+            if (!product) return;
+
+            const variant = product.variants.find(v => v.variantId === variantId);
+            const oldPrice = variant ? variant.price : 0;
+
+            const promoData = {
+                variantId: variantId,
+                promoPrice: newPrice,
+                startDate: startDate,
+                endDate: endDate
+            };
+
+            const newHistoryEntry = {
+                type: 'PROMOTION',
+                variantColor: variant ? variant.color : '',
+                variantStorage: variant ? variant.storage : '',
+                oldPrice: oldPrice,
+                newPrice: newPrice,
+                startDate: startDate,
+                endDate: endDate,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUserEmail
+            };
+
+            let priceHistoryArray = product.priceHistory || [];
+            priceHistoryArray.push(newHistoryEntry);
+
+            try {
+                await updateDoc(doc(db, "products", productId), {
+                    currentPromotion: promoData,
+                    priceHistory: priceHistoryArray
+                });
+                FStoreDialog.show("Thành công", "Đã thiết lập giá khuyến mãi mới!", "info");
+                promoPriceModal.style.display = 'none';
+                loadAdminData();
+            } catch (err) {
+                FStoreDialog.show("Lỗi", "Không thể lưu dữ liệu!", "info");
+            }
+        });
+    }
+
+    window.removePromo = (productId) => {
+        FStoreDialog.show("Xác nhận", "Bạn có chắc chắn muốn HỦY chương trình giá khuyến mãi của sản phẩm này không?", "confirm", async () => {
+            try {
+                const productRef = doc(db, "products", productId);
+                await updateDoc(productRef, { currentPromotion: null });
+                FStoreDialog.show("Thành công", "Đã hủy giá khuyến mãi!", "info");
+                loadAdminData();
+            } catch (err) {
+                FStoreDialog.show("Lỗi", "Có lỗi xảy ra khi hủy!", "info");
+            }
+        });
+    };
+
+    const priceHistoryModal = document.getElementById('priceHistoryModal');
+    if (document.getElementById('closeHistoryModal')) {
+        document.getElementById('closeHistoryModal').onclick = () => priceHistoryModal.style.display = 'none';
+    }
+
+    window.viewPriceHistory = (id) => {
+        const p = productsList.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById('historyProductName').innerText = p.name;
+        const tbody = document.getElementById('historyTableBody');
+        let html = '';
+
+        if (!p.priceHistory || p.priceHistory.length === 0) {
+            html = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#86868b;">Sản phẩm này chưa từng thay đổi giá.</td></tr>`;
+        } else {
+            const sortedHistory = [...p.priceHistory].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            
+            sortedHistory.forEach(h => {
+                const varName = `${h.variantColor || ''} ${h.variantStorage ? '- ' + h.variantStorage : ''}`;
+                const note = h.type === 'PROMOTION' 
+                    ? `<span style="color:#ff3b30; font-size:12px; font-weight:bold;">Khuyến mãi hẹn giờ:</span><br><span style="font-size:11px;">Từ ${formatDate(h.startDate)}<br>Đến ${formatDate(h.endDate)}</span>` 
+                    : `<span style="color:#34c759; font-size:12px; font-weight:bold;">Sửa giá gốc</span>`;
+
+                html += `
+                    <tr>
+                        <td style="font-size: 13px;">${formatDateTime(h.updatedAt)}</td>
+                        <td>${varName}</td>
+                        <td style="text-decoration: line-through; color: #86868b;">${formatPrice(h.oldPrice)}</td>
+                        <td style="color: #ff3b30; font-weight: bold;">${formatPrice(h.newPrice)}</td>
+                        <td>${note}</td>
+                        <td style="font-size: 12px; color: #666;">${h.updatedBy || 'Không rõ'}</td>
+                    </tr>
+                `;
+            });
+        }
+        tbody.innerHTML = html;
+        priceHistoryModal.style.display = 'block';
+    };
+
+    // =====================================
+    // QUẢN LÝ ĐƠN HÀNG (CHỨC NĂNG DỌN DẸP)
+    // =====================================
+    let selectedOrderIds = new Set(); // Bộ nhớ chứa các đơn đang được tick chọn
+
+    const renderOrdersTable = () => {
+        // Reset trạng thái mỗi khi render lại bảng
+        selectedOrderIds.clear(); 
+        updateBulkDeleteOrderBtn();
+        const selectAllCheckbox = document.getElementById('selectAllOrders');
+        if(selectAllCheckbox) selectAllCheckbox.checked = false;
+
+        const sortVal = document.getElementById('sortOrderSelect')?.value || 'newest';
+        let sortedOrders = [...ordersList];
+        sortedOrders.sort((a, b) => {
+            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt).getTime() || 0);
+            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt).getTime() || 0);
+            return sortVal === 'newest' ? timeB - timeA : timeA - timeB; 
+        });
+
+        let orderHtml = '';
+        sortedOrders.forEach(o => {
+            let statusColor = "#f59e0b";
+            if (o.status === "Đang giao" || o.status === "Shipped") statusColor = "#007aff";
+            if (o.status === "Hoàn thành" || o.status === "Completed") statusColor = "#34c759";
+            if (o.status === "Đã thanh toán" || o.status === "Chờ duyệt") statusColor = "#34c759"; 
+            if (o.status === "Đã hủy" || o.status === "Cancelled") statusColor = "#ff3b30";
+
+            // Lấy Tên sản phẩm trong đơn để Chủ Shop biết là Điện thoại hay Bia
+            let itemsPreview = "Không rõ";
+            if (o.items && Array.isArray(o.items)) {
+                itemsPreview = o.items.map(item => item.name).join(', ');
+                if (itemsPreview.length > 50) itemsPreview = itemsPreview.substring(0, 50) + "...";
+            }
+
+            orderHtml += `<tr>
+                <td style="text-align: center;">
+                    <input type="checkbox" class="order-checkbox" value="${o.id}" onclick="toggleOrderSelection('${o.id}')" style="transform: scale(1.2); cursor: pointer;">
+                </td>
+                <td>${o.orderId || o.id}</td>
+                <td>${o.userEmail || o.userId || 'Khách vãng lai'}</td>
+                <td style="color: #666; font-size: 13px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${o.items ? o.items.map(i=>i.name).join(', ') : ''}">
+                    ${itemsPreview}
+                </td>
+                <td>${formatDate(o.createdAt)}</td> 
+                <td><strong>${formatPrice(o.totalAmount || o.totalPrice || 0)}</strong></td>
+                <td><span style="color:${statusColor}; font-weight:bold;">${o.status || 'Chờ thanh toán'}</span></td>
+            </tr>`;
+        });
+        document.getElementById('adminOrderList').innerHTML = orderHtml || '<tr><td colspan="7" style="text-align: center; padding: 20px;">Chưa có đơn hàng</td></tr>';
+    };
+
+    // Hàm Xử lý tick chọn 1 đơn
+    window.toggleOrderSelection = (id) => {
+        if (selectedOrderIds.has(id)) selectedOrderIds.delete(id);
+        else selectedOrderIds.add(id);
+        
+        updateBulkDeleteOrderBtn();
+        
+        // Kiểm tra xem đã tick hết chưa để auto tick ô "Chọn tất cả"
+        const allCheckboxes = document.querySelectorAll('.order-checkbox');
+        document.getElementById('selectAllOrders').checked = (selectedOrderIds.size === allCheckboxes.length && allCheckboxes.length > 0);
+    };
+
+    // Hàm Cập nhật UI Nút Xóa
+    const updateBulkDeleteOrderBtn = () => {
+        const btn = document.getElementById('btnDeleteMultipleOrders');
+        const countSpan = document.getElementById('selectedOrderCount');
+        if (btn && countSpan) {
+            if (selectedOrderIds.size > 0) {
+                btn.style.display = 'flex';
+                countSpan.innerText = selectedOrderIds.size;
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+    };
+
+    // Bắt sự kiện cho ô "Chọn tất cả"
+    if (document.getElementById('selectAllOrders')) {
+        document.getElementById('selectAllOrders').addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            const checkboxes = document.querySelectorAll('.order-checkbox');
+            selectedOrderIds.clear();
+            
+            checkboxes.forEach(cb => {
+                cb.checked = isChecked;
+                if (isChecked) selectedOrderIds.add(cb.value);
+            });
+            updateBulkDeleteOrderBtn();
+        });
+    }
+
+    // Bắt sự kiện Xóa hàng loạt Firebase
+    if (document.getElementById('btnDeleteMultipleOrders')) {
+        document.getElementById('btnDeleteMultipleOrders').addEventListener('click', () => {
+            FStoreDialog.show("Cảnh báo nguy hiểm", `Bạn có chắc chắn muốn xóa vĩnh viễn ${selectedOrderIds.size} đơn hàng đã chọn không? Hành động này không thể khôi phục!`, "confirm", async () => {
+                try {
+                    const deletePromises = [];
+                    selectedOrderIds.forEach(id => {
+                        deletePromises.push(deleteDoc(doc(db, "orders", id)));
+                    });
+                    
+                    await Promise.all(deletePromises);
+                    
+                    selectedOrderIds.clear();
+                    FStoreDialog.show("Thành công", "Đã dọn dẹp sạch sẽ các đơn hàng cũ!", "info");
+                    loadAdminData(); // Cập nhật lại biểu đồ và danh sách
+                } catch (error) {
+                    FStoreDialog.show("Lỗi", "Có lỗi xảy ra khi xóa đơn hàng!", "info");
+                }
+            });
+        });
+    }
 
     // =====================================
     // QUẢN LÝ DIỄN ĐÀN (Forum)

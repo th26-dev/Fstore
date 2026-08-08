@@ -30,6 +30,7 @@
                 <li class="active" data-tab="dashboard"><i class="fa-solid fa-chart-line"></i> Thống kê</li>
                 <li data-tab="categories"><i class="fa-solid fa-layer-group"></i> Danh mục</li>
                 <li data-tab="products"><i class="fa-solid fa-box"></i> Sản phẩm</li>
+                <li data-tab="pricing"><i class="fa-solid fa-tags"></i> Quản lý giá</li>
                 <li data-tab="orders"><i class="fa-solid fa-cart-shopping"></i> Đơn hàng</li>
                 <li data-tab="forum"><i class="fa-solid fa-comments"></i> Diễn đàn</li>
                 <li data-tab="vouchers"><i class="fa-solid fa-ticket"></i> Quản lý Voucher</li>
@@ -124,22 +125,74 @@
                     </div>
                 </div>
                 <table class="data-table">
-                    <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá (Từ)</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá gốc (Từ)</th><th>Thao tác</th></tr></thead>
                     <tbody id="adminProductList"></tbody>
                 </table>
             </div>
 
-            <!-- TAB ĐƠN HÀNG -->
+           <!-- TAB QUẢN LÝ GIÁ (ĐÃ NÂNG CẤP GIAO DIỆN & LỌC DANH MỤC) -->
+            <div id="tab-pricing" class="tab-content">
+                <div class="flex-between" style="margin-bottom: 20px; align-items: flex-end;">
+                    <div>
+                        <h3 style="margin-bottom: 5px; font-size: 1.5rem; color: #1d1d1f;">Quản lý Giá & Khuyến mãi</h3>
+                        <p style="color: #86868b; font-size: 14px; margin: 0;">Thiết lập giá bán và lên lịch khuyến mãi tự động theo từng danh mục.</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <label for="filterPricingCategory" style="font-weight: bold; color: #1d1d1f; font-size: 14px;">
+                            <i class="fa-solid fa-filter"></i> Lọc theo:
+                        </label>
+                        <select id="filterPricingCategory" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer; min-width: 200px;">
+                            <option value="all">Tất cả danh mục</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="padding: 0; overflow: hidden; border-radius: 16px;">
+                    <table class="data-table" style="margin: 0; border: none; width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f5f5f7;">
+                            <tr>
+                                <th style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: left;">Sản phẩm</th>
+                                <th style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: left;">Phân loại & Giá gốc</th>
+                                <th style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: left;">Khuyến mãi đang chạy</th>
+                                <th style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: center;">Trạng thái</th>
+                                <th style="padding: 15px 20px; border-bottom: 1px solid #e5e5ea; text-align: right;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminPricingList">
+                            <!-- JS sẽ đổ dữ liệu vào đây -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+           <!-- TAB ĐƠN HÀNG (ĐÃ NÂNG CẤP DỌN DẸP HÀNG LOẠT) -->
             <div id="tab-orders" class="tab-content">
                 <div class="flex-between" style="margin-bottom: 20px;">
                     <h3>Quản lý đơn hàng</h3>
-                    <select id="sortOrderSelect" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
-                        <option value="newest">Đơn mới nhất</option>
-                        <option value="oldest">Đơn cũ nhất</option>
-                    </select>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <!-- Nút Xóa hàng loạt (Sẽ ẩn/hiện tự động bằng JS) -->
+                        <button class="btn-action btn-del" id="btnDeleteMultipleOrders" style="display: none; background: #ff3b30; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-trash"></i> Xóa các đơn đã chọn (<span id="selectedOrderCount">0</span>)
+                        </button>
+                        
+                        <select id="sortOrderSelect" style="padding: 10px 15px; border-radius: 10px; border: 1px solid #d2d2d7; outline: none; font-size: 14px; background: #fff; cursor: pointer;">
+                            <option value="newest">Đơn mới nhất</option>
+                            <option value="oldest">Đơn cũ nhất</option>
+                        </select>
+                    </div>
                 </div>
                 <table class="data-table">
-                    <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Thời gian</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllOrders" style="transform: scale(1.2); cursor: pointer;"></th>
+                            <th>Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Sản phẩm (Xem để lọc)</th>
+                            <th>Thời gian</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
                     <tbody id="adminOrderList"></tbody>
                 </table>
             </div>
@@ -308,7 +361,7 @@
                 <div id="specsContainer" class="variant-box"></div>
                 
                 <hr style="margin: 20px 0; border: 0.5px solid #eee;">
-                <h3>Biến thể Sản phẩm (Quy cách, Thể tích, Giá, Ảnh...)</h3>
+                <h3>Biến thể Sản phẩm (Quy cách, Thể tích, Giá gốc, Ảnh...)</h3>
                 <p style="font-size: 13px; color: #ff3b30; margin-bottom: 10px;">* Mẹo: Bạn có thể chọn nhiều File ảnh cùng lúc. Hệ thống sẽ tự nén và lưu!</p>
                 <button type="button" class="btn-action btn-add-var" id="btnAddVariant">+ Thêm phân loại</button>
                 <div id="variantsContainer" class="variant-box"></div>
@@ -318,9 +371,40 @@
         </div>
     </div>
 
-    <!-- MODAL LỊCH SỬ THAY ĐỔI GIÁ -->
+    <!-- MODAL CẬP NHẬT GIÁ KHUYẾN MÃI (MỚI) -->
+    <div id="promoPriceModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" id="closePromoModal">&times;</span>
+            <h2>Cập nhật Giá Khuyến Mãi</h2>
+            <h4 id="promoProductName" style="color: #007aff; margin-bottom: 15px;"></h4>
+            <form id="promoForm">
+                <input type="hidden" id="promoProductId">
+                <div class="form-group">
+                    <label>Áp dụng cho Phân loại (Biến thể)</label>
+                    <select id="promoVariant" class="v-form-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Giá khuyến mãi mới (VNĐ)</label>
+                    <input type="number" id="promoPrice" class="v-form-control" required placeholder="Ví dụ: 850000">
+                </div>
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Từ ngày</label>
+                        <input type="date" id="promoStart" class="v-form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Đến ngày</label>
+                        <input type="date" id="promoEnd" class="v-form-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-action btn-save" style="width: 100%; margin-top: 10px; font-size: 16px; padding: 12px; background: #ff3b30; color: #fff; border: none; border-radius: 8px;">Lưu Giá Bán & Lịch Sử</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL LỊCH SỬ THAY ĐỔI GIÁ (ĐÃ UPDATE CHO KHUYẾN MÃI) -->
     <div id="priceHistoryModal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content" style="max-width: 750px;">
             <span class="close-modal" id="closeHistoryModal">&times;</span>
             <h2>Lịch sử thay đổi giá</h2>
             <h4 id="historyProductName" style="color: #007aff; margin-bottom: 15px;"></h4>
@@ -328,10 +412,11 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Thời gian đổi</th>
+                            <th>Thời gian thao tác</th>
                             <th>Phân loại</th>
                             <th>Giá cũ</th>
                             <th>Giá mới</th>
+                            <th>Ghi chú / Hiệu lực</th>
                             <th>Người sửa</th>
                         </tr>
                     </thead>
